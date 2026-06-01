@@ -24,18 +24,23 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
 - **Décision** : **Tailwind CSS v4** (4.3.0 confirmée stable, mai 2026).
 - **Raison** : moteur 5–100× plus rapide, utilitaire, zéro lock-in composant, idéal pour un design sur mesure.
 
-## ADR-0003 — Base de données : PostgreSQL + Drizzle ORM, hébergé sur Neon
+## ADR-0003 — Base de données : PostgreSQL auto-hébergé sur le serveur Linux + Drizzle ORM
 
-- **Date** : 2026-06-01
-- **Contexte** : Besoin de recherche plein-texte (filtres déduits) et de requêtes géo (rayon de distance),
-  sur du serverless (Vercel). Couche d'accès typée et légère.
-- **Options ORM** : Drizzle vs Prisma. **Options DB** : Postgres (Neon/Supabase) vs SQLite proto.
-- **Décision** : **PostgreSQL** + **Drizzle ORM**, hébergé sur **Neon**.
-- **Raison** : Postgres = plein-texte (`tsvector`) et géo (`earthdistance`/PostGIS) natifs.
-  Drizzle est edge-native, bundle minuscule, contrôle SQL fin (utile pour plein-texte/géo) et excellent
-  en cold-start serverless. Neon = Postgres serverless avec free tier généreux et branches de dev.
-- **Alternative écartée** : Prisma (plus d'abstraction/écosystème, mais bundle plus lourd et moins de
-  contrôle SQL pour nos requêtes spécifiques).
+- **Date** : 2026-06-01 — **révisé 2x le 2026-06-01** (Neon → PGlite → serveur Postgres auto-hébergé)
+- **Contexte** : Besoin de plein-texte (filtres déduits) et de calcul géo (rayon de distance). Couche
+  d'accès typée. **Contraintes de la propriétaire** : (1) minimiser les dépendances fournisseur et garder
+  la main sur sa techno ; (2) **pas de compromis sur la qualité technique** ; (3) elle dispose d'un
+  **serveur Linux personnel** dédié au dev/hébergement, sur lequel **Claude Code tourne directement**.
+- **Décision** : **PostgreSQL serveur, installé et auto-hébergé sur le serveur Linux** (`192.168.1.175`),
+  accédé via **Drizzle ORM**. Pas de service managé, pas de Docker, pas de PGlite : le vrai moteur,
+  full puissance (plein-texte natif, extensions géo possibles, multi-connexions → site et robot séparés).
+- **Raison** : le serveur Linux supprime tout compromis : on a un Postgres « pro » complet **et** zéro
+  dépendance externe — tout vit sur la machine de la propriétaire. C'est le meilleur des deux mondes.
+- **Conséquence** : le développement se fait **sur le serveur** (Claude Code natif Linux) ; la base, le
+  robot de collecte et le site tournent au même endroit. Le PC Windows ne sert plus qu'à lancer la session.
+- **Alternatives écartées** : Neon/Supabase (dépendance fournisseur) ; PGlite (mono-processus, inutile
+  puisqu'on a un vrai serveur) ; Docker (superflu sur un Linux dédié) ; SQLite (dialecte différent) ;
+  Prisma (moins de contrôle SQL).
 
 ## ADR-0004 — Validation des données externes : Zod
 
