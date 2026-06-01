@@ -90,11 +90,28 @@ Conventions :
 ## 5. Commandes
 
 ```bash
-npm run dev          # dev local (Turbopack)
+npm run dev          # dev (écoute sur 0.0.0.0:3002 → accessible depuis le LAN)
 npm run build        # build de prod
 npm run lint         # ESLint
 npm run test         # Vitest (à venir)
 ```
+
+## 5bis. Accès réseau & tests (TRÈS IMPORTANT)
+
+Le code et les serveurs (Next.js, Postgres, robot) tournent **sur le serveur Linux** (`333SRV`,
+`192.168.1.175`). Mais la **propriétaire travaille depuis son PC Windows** sur le même réseau local,
+et c'est **depuis ce PC** qu'elle teste l'app et qu'elle exécute la **MCP Chrome**. Conséquences :
+
+- **Port du projet = `3002`** (3000 = « Lumina », 3001 = « Périple » : déjà pris par d'autres apps).
+  `npm run dev`/`npm run start` écoutent sur `0.0.0.0:3002`.
+- **Pour tester l'app, toujours donner l'URL réseau** : **`http://192.168.1.175:3002`** — JAMAIS
+  `localhost` (localhost = le serveur, pas le PC de la proprio → elle ne verrait rien).
+- **MCP Chrome (sur le PC Windows)** : tout test navigateur doit viser **`http://192.168.1.175:3002`**,
+  jamais `localhost`/`127.0.0.1`. Sinon le test pointe sur le mauvais hôte et donne un faux résultat.
+- **Pare-feu (ufw actif)** : port 3002 ouvert pour le LAN (`192.168.1.0/24`). Ouvrir tout nouveau
+  port exposé de la même façon : `sudo ufw allow from 192.168.1.0/24 to any port <p> proto tcp`.
+- La proprio n'est pas technicienne : quand on lui demande de tester, **donner les étapes complètes**
+  (l'URL exacte à ouvrir, quoi cliquer, quoi observer).
 
 ---
 
