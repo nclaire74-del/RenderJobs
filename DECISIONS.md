@@ -61,3 +61,36 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   paramètres `motsCles` / `commune` / `rayon`. Détail d'intégration à confirmer sur le portail officiel
   lors de l'implémentation du connecteur.
 - **Raison** : gratuite, officielle, riche, conforme RGPD/ToS — exactement l'« amorce » du plan.
+
+## ADR-0007 — Posture de collecte : scraping agressif « zone grise » des offres publiques
+
+- **Date** : 2026-06-01
+- **Contexte** : La propriétaire a précisé après coup que le projet **repose largement sur le scraping**
+  (la majorité des sources du secteur n'ont pas d'API) et doit être un « Joker » de la recherche d'emploi.
+  Cela **révise** le principe initial du plan (« pas de scraping »).
+- **Décision** : Collecte **agressive** des **offres d'emploi publiques** des sites sans API, y compris
+  les sources dont les ToS la découragent (zone grise). Déploiement **par étapes** (atteignable/faible
+  risque d'abord ; sources hostiles ensuite, une fois l'infra résiliente prête).
+- **Ligne rouge maintenue (non négociable)** : **aucune donnée personnelle** (posts perso de recruteurs)
+  → RGPD. Ces annonces passent par la **soumission communautaire**. Pas d'outil d'évasion à visée
+  malveillante ; on bâtit un moteur résilient (vrai navigateur, rate-limiting, rotation, proxies).
+- **Raison** : c'est la condition pour atteindre la couverture « Joker » dans un secteur où l'essentiel
+  des offres vit sur des boards sans API. Risque assumé par la propriétaire (décision stratégique).
+- **Conséquence** : on affiche toujours la source + lien d'origine (attribution) ; on isole le risque
+  par source (un board qui bloque n'arrête pas les autres).
+
+## ADR-0008 — Moteur de scraping : Playwright + stratégie « API d'abord »
+
+- **Date** : 2026-06-01
+- **Contexte** : Besoin d'un moteur de collecte robuste tournant en cron (5–15 min), capable de gérer
+  des sites en JavaScript et des protections anti-bot raisonnables.
+- **Options** : Playwright vs Puppeteer vs HTTP brut (cheerio/fetch) vs MCP Chrome interactif.
+- **Décision** : **Playwright** (Chromium headless) pour le scraping de production, intégré au code et
+  versionné. **HTTP brut + parsing** (fetch + cheerio) quand une page le permet (plus léger/rapide).
+  **MCP Chrome** réservé à l'**exploration interactive** des sources en R&D (pas la prod ; non connectée
+  pour l'instant). **Stratégie d'implémentation : API/RSS d'abord** (Tier 1–2 de `SOURCES.md`), scraping
+  ensuite (Tier 3–4) — meilleur ratio couverture/risque/effort.
+- **Raison** : Playwright = standard 2026, multi-navigateur, anti-détection raisonnable, fiable en CI.
+  La séquence API→RSS→scrape donne de la valeur vite et concentre le risque là où il est nécessaire.
+- **Conséquence** : architecture par **connecteurs** isolés (1 dossier/source) exposant `fetch()` +
+  `normalize()` vers le type `Offre` commun ; chaque connecteur est testable et désactivable seul.

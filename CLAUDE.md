@@ -18,8 +18,13 @@ Différenciateur clé : des filtres que personne d'autre n'a (logiciel, spécial
 **déduits** par enrichissement du texte des annonces.
 
 Principes non négociables : sans compte · redirection directe · niche assumée · fraîcheur ·
-**légal & propre** (sources officielles API/RSS + soumission communautaire ; jamais de scraping
-de données personnelles).
+**attribution** (toujours afficher la source + lien d'origine).
+
+**Posture de collecte (révisée — cf. ADR-0007)** : le projet repose largement sur le **scraping
+agressif des offres publiques** (la plupart des sources du secteur n'ont pas d'API), déployé par
+étapes via Playwright. Stratégie : **API/RSS d'abord, scraping ensuite**. **Ligne rouge absolue** :
+jamais de **données personnelles** (posts perso de recruteurs) → RGPD ; ces annonces passent par la
+**soumission communautaire**. Voir `SOURCES.md` pour la carte des sources.
 
 ---
 
@@ -45,6 +50,8 @@ de données personnelles).
 - **DB** : PostgreSQL (plein-texte + géo natifs) via **Drizzle ORM**. Hébergement **Neon**.
 - **Validation** : Zod (parsing des API externes — couche critique).
 - **Tests** : Vitest (pipeline normalisation/enrichissement surtout).
+- **Scraping** : Playwright (Chromium headless) pour la prod ; fetch+cheerio quand suffisant ;
+  MCP Chrome pour l'exploration R&D (non connectée pour l'instant). Cf. ADR-0008.
 - **Cron** : Vercel Cron en prod ; script npm en local.
 - **Notifications** : webhook Discord + email (Resend/SendGrid) — Phase 2.
 - **Hébergement** : Vercel (front + cron) + Neon (Postgres).
@@ -101,8 +108,19 @@ npm run test         # Vitest (à venir)
 
 ---
 
-## 7. Où en est-on
+## 7. Hygiène de session & hand-off
+
+Pour ne pas se perdre au fil des sessions :
+- Le fichier **`HANDOFF.md`** (racine) est le **point de reprise** : état réel, prochaine action
+  précise, pièges, questions ouvertes. Claude le **met à jour en fin de session** avant un `/clear`.
+- Claude **dit franchement** quand il est temps de `/clear` (contexte chargé / étape close) plutôt
+  que de laisser la session s'alourdir. Reprise propre = lire `HANDOFF.md` + `CLAUDE.md` + `DECISIONS.md`.
+- Une session = un thème cohérent autant que possible (ex. « brancher France Travail », « connecteur
+  ArtStation »), pour garder un contexte frais.
+
+## 8. Où en est-on
 
 Feuille de route : Phase 0 (fondations) → 1 (MVP) → 2 (vitesse/communauté) → 3 (sources avancées).
-**État courant** : Phase 0 — scaffold posé, connexion France Travail à faire.
-Tenir cette ligne à jour à chaque étape.
+**État courant** : Phase 0 — scaffold + fondations docs posés ; posture scraping tranchée (agressive,
+ADR-0007) ; carte des sources faite (`SOURCES.md`). **Prochain** : monter le moteur de collecte
+(Playwright + 1er connecteur API, France Travail/Adzuna). Détail vivant dans `HANDOFF.md`.
