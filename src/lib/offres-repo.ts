@@ -78,20 +78,25 @@ export interface FiltreOffres {
   page?: number;
 }
 
+/** Dimension de facette qu'on peut **exclure** des conditions (pour ne pas qu'une facette se filtre elle-même). */
+type DimensionFacette = "pays" | "logiciel" | "specialite";
+
 /**
- * Construit les conditions WHERE communes (hors `pertinence`, géré à part pour
- * pouvoir compter chaque onglet avec les mêmes filtres).
+ * Construit les conditions WHERE communes (hors `pertinence`, géré à part pour pouvoir compter chaque
+ * onglet avec les mêmes filtres). `exclure` retire une dimension : utilisé par les facettes pour
+ * afficher, dans leur propre sélecteur, les autres valeurs encore disponibles compte tenu des AUTRES
+ * filtres actifs (faceted search standard).
  */
-function conditionsCommunes(f: FiltreOffres): SQL[] {
+function conditionsCommunes(f: FiltreOffres, exclure?: DimensionFacette): SQL[] {
   const conds: SQL[] = [];
 
-  if (f.pays) conds.push(eq(offres.pays, f.pays));
+  if (f.pays && exclure !== "pays") conds.push(eq(offres.pays, f.pays));
   if (f.contrat) conds.push(eq(offres.contrat, f.contrat));
   if (f.experience) conds.push(eq(offres.experience, f.experience));
   if (f.mode) conds.push(eq(offres.modeTravail, f.mode));
   // Colonnes text[] : containment `@>` (l'offre porte ce logiciel / cette spécialité).
-  if (f.logiciel) conds.push(arrayContains(offres.logiciels, [f.logiciel]));
-  if (f.specialite) conds.push(arrayContains(offres.specialites, [f.specialite]));
+  if (f.logiciel && exclure !== "logiciel") conds.push(arrayContains(offres.logiciels, [f.logiciel]));
+  if (f.specialite && exclure !== "specialite") conds.push(arrayContains(offres.specialites, [f.specialite]));
 
   const terme = f.q?.trim();
   if (terme) {
@@ -195,19 +200,18 @@ export interface FacettePays {
 }
 
 /**
- * Liste les pays présents dans une vue (filtre géo de premier plan, R-3).
- * Les offres sans pays sont regroupées et renvoyées en fin de liste.
+ * Liste les pays présents dans une vue (filtre géo de premier plan, R-3), **dédupliqués** (count
+ * distinct des groupes `cle_dedup`, cohérent avec la liste et les badges d'onglets) et tenant compte
+ * des **autres filtres actifs** (sauf le pays lui-même). Les offres sans pays sont ignorées.
  */
-export async function listerPays(vue: Vue): Promise<FacettePays[]> {
+export async function listerPays(f: FiltreOffres): Promise<FacettePays[]> {
+  const n = sql<number>`count(distinct ${CLE_GROUPE})::int`;
   const lignes = await db
-    .select({
-      pays: sql<string | null>`${offres.pays}`,
-      n: count(),
-    })
+    .select({ pays: sql<string | null>`${offres.pays}`, n })
     .from(offres)
-    .where(eq(offres.pertinence, vue))
+    .where(and(eq(offres.pertinence, f.vue), ...conditionsCommunes(f, "pays")))
     .groupBy(offres.pays)
-    .orderBy(desc(count()), asc(offres.pays));
+    .orderBy(sql`count(distinct ${CLE_GROUPE}) desc`, asc(offres.pays));
 
   return lignes
     .filter((l): l is { pays: string; n: number } => l.pays !== null && l.pays !== "")
@@ -221,35 +225,40 @@ export interface FacetteTableau {
 }
 
 /**
- * Facette d'une colonne `text[]` (logiciels / specialites) pour une vue : déplie le tableau
- * (`unnest`), compte par valeur, trie par fréquence. Sert à peupler les listes déroulantes
- * différenciantes (on n'y propose que des valeurs réellement présentes).
+ * Facette d'une colonne `text[]` (logiciels / specialites) : déplie le tableau (`unnest`) puis compte
+ * les **groupes dédupliqués distincts** (`cle_dedup`) par valeur — cohérent avec la liste et les badges
+ * d'onglets, pas le nombre de lignes brutes. Tient compte des **autres filtres actifs** (la dimension
+ * `exclure` est retirée pour que le sélecteur garde ses autres valeurs disponibles). Trié par fréquence.
  */
 async function facetteTableau(
   colonne: typeof offres.logiciels | typeof offres.specialites,
-  vue: Vue,
+  f: FiltreOffres,
+  exclure: DimensionFacette,
 ): Promise<FacetteTableau[]> {
   const deplie = db
-    .select({ valeur: sql<string>`unnest(${colonne})`.as("valeur") })
+    .select({
+      valeur: sql<string>`unnest(${colonne})`.as("valeur"),
+      groupe: sql<string>`${CLE_GROUPE}`.as("groupe"),
+    })
     .from(offres)
-    .where(eq(offres.pertinence, vue))
+    .where(and(eq(offres.pertinence, f.vue), ...conditionsCommunes(f, exclure)))
     .as("deplie");
 
   const lignes = await db
-    .select({ valeur: deplie.valeur, n: count() })
+    .select({ valeur: deplie.valeur, n: sql<number>`count(distinct ${deplie.groupe})::int` })
     .from(deplie)
     .groupBy(deplie.valeur)
-    .orderBy(desc(count()), asc(deplie.valeur));
+    .orderBy(sql`count(distinct ${deplie.groupe}) desc`, asc(deplie.valeur));
 
   return lignes.map((l) => ({ valeur: l.valeur, n: l.n }));
 }
 
-/** Logiciels présents dans une vue, du plus fréquent au moins fréquent (filtre différenciant). */
-export function listerLogiciels(vue: Vue): Promise<FacetteTableau[]> {
-  return facetteTableau(offres.logiciels, vue);
+/** Logiciels présents dans la vue (dédupliqués, filtres actifs honorés), du plus fréquent au moins. */
+export function listerLogiciels(f: FiltreOffres): Promise<FacetteTableau[]> {
+  return facetteTableau(offres.logiciels, f, "logiciel");
 }
 
-/** Spécialités présentes dans une vue, du plus fréquent au moins fréquent (filtre différenciant). */
-export function listerSpecialites(vue: Vue): Promise<FacetteTableau[]> {
-  return facetteTableau(offres.specialites, vue);
+/** Spécialités présentes dans la vue (dédupliquées, filtres actifs honorés), du plus fréquent au moins. */
+export function listerSpecialites(f: FiltreOffres): Promise<FacetteTableau[]> {
+  return facetteTableau(offres.specialites, f, "specialite");
 }

@@ -77,9 +77,9 @@ export default async function Dashboard({
     await Promise.all([
       listerOffres(filtre),
       compterParVue(filtre),
-      listerPays(filtre.vue),
-      listerLogiciels(filtre.vue),
-      listerSpecialites(filtre.vue),
+      listerPays(filtre),
+      listerLogiciels(filtre),
+      listerSpecialites(filtre),
     ]);
 
   return (
