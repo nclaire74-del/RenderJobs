@@ -16,6 +16,7 @@ import type {
   FacettePays,
   FacetteTableau,
 } from "@/lib/offres-repo";
+import { SANS_PAYS } from "@/lib/offres-repo";
 import { CONTRATS, EXPERIENCES, MODES_TRAVAIL } from "@/domain/offre";
 import { construireHref } from "@/lib/url";
 import {
@@ -75,7 +76,7 @@ export function BarreFiltres({
           <option value="">{t.filtres.tousPays}</option>
           {pays.map((p) => (
             <option key={p.pays} value={p.pays}>
-              {p.pays} ({p.n})
+              {p.pays === SANS_PAYS ? t.filtres.sansPays : p.pays} ({p.n})
             </option>
           ))}
         </select>

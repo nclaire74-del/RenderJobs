@@ -27,8 +27,9 @@ export const t = {
 
   filtres: {
     titre: "Filtrer",
-    pays: "Pays",
-    tousPays: "Tous les pays",
+    pays: "Lieu",
+    tousPays: "Tous les lieux",
+    sansPays: "Lieu non précisé",
     contrat: "Contrat",
     tousContrats: "Tous contrats",
     experience: "Niveau",
@@ -63,6 +64,12 @@ export const t = {
   },
 
   pied: "Chaque offre renvoie vers sa source officielle. Aucune donnée personnelle collectée.",
+
+  erreur: {
+    titre: "Une erreur est survenue",
+    aide: "Le chargement des offres a échoué. Réessaie dans un instant.",
+    reessayer: "Réessayer",
+  },
 } as const;
 
 /** Libellés des contrats. */

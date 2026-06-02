@@ -81,6 +81,9 @@ export interface FiltreOffres {
 /** Dimension de facette qu'on peut **exclure** des conditions (pour ne pas qu'une facette se filtre elle-même). */
 type DimensionFacette = "pays" | "logiciel" | "specialite";
 
+/** Valeur sentinelle du filtre « Lieu » pour cibler les offres **sans pays** (rend visibles les NULL). */
+export const SANS_PAYS = "__sans_pays__";
+
 /**
  * Construit les conditions WHERE communes (hors `pertinence`, géré à part pour pouvoir compter chaque
  * onglet avec les mêmes filtres). `exclure` retire une dimension : utilisé par les facettes pour
@@ -90,7 +93,13 @@ type DimensionFacette = "pays" | "logiciel" | "specialite";
 function conditionsCommunes(f: FiltreOffres, exclure?: DimensionFacette): SQL[] {
   const conds: SQL[] = [];
 
-  if (f.pays && exclure !== "pays") conds.push(eq(offres.pays, f.pays));
+  if (f.pays && exclure !== "pays") {
+    conds.push(
+      f.pays === SANS_PAYS
+        ? sql`(${offres.pays} is null or ${offres.pays} = '')`
+        : eq(offres.pays, f.pays),
+    );
+  }
   if (f.contrat) conds.push(eq(offres.contrat, f.contrat));
   if (f.experience) conds.push(eq(offres.experience, f.experience));
   if (f.mode) conds.push(eq(offres.modeTravail, f.mode));
@@ -213,9 +222,12 @@ export async function listerPays(f: FiltreOffres): Promise<FacettePays[]> {
     .groupBy(offres.pays)
     .orderBy(sql`count(distinct ${CLE_GROUPE}) desc`, asc(offres.pays));
 
-  return lignes
+  const reels = lignes
     .filter((l): l is { pays: string; n: number } => l.pays !== null && l.pays !== "")
     .map((l) => ({ pays: l.pays, n: l.n }));
+  // Entrée « Lieu non précisé » en fin de liste (rend les offres sans pays atteignables, AUDIT §D).
+  const sans = lignes.find((l) => l.pays === null || l.pays === "");
+  return sans && sans.n > 0 ? [...reels, { pays: SANS_PAYS, n: sans.n }] : reels;
 }
 
 /** Une option de facette « tableau » (logiciel / spécialité) : valeur canon + nombre d'offres. */
