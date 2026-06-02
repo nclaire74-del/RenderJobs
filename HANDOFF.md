@@ -3,8 +3,8 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. **Court et opérationnel** — l'historique détaillé est dans `DECISIONS.md` (ADR).
 
-**Dernière mise à jour** : 2026-06-02 — **CHECKPOINT mono-lead-dev** (tag `v0.1-checkpoint`) : filtres
-différenciants + enrichissement élargi + cron express 5 min + audit multi-agents (7 fixes appliqués). Phase **1 (MVP)**.
+**Dernière mise à jour** : 2026-06-02 — **virage COPILOTE en cours** (post-AUDIT.md) : P0 fondation faite
+(pays réparé, GIN, backup, error/loading) + **P1 profil + scoring de correspondance** livré. Phase **1→2**.
 
 ## 🎯 État en une page
 
@@ -52,9 +52,26 @@ Liste à jour = `.env.example`.
 > `CRON_SECRET` régénéré. Reste : les clés FT/Adzuna ont transité par la **conversation** → pour durcir avant
 > ouverture publique, les régénérer sur les portails (procédure : `deploy/README.md`). **Action proprio**, non urgente.
 
-## ▶️ Prochaines actions possibles (le sourcing est solide — pivot produit conseillé)
+## 🚀 Virage COPILOTE (post-AUDIT.md) — feuille de route active
 
-1. **Décision produit** : l'onglet **« connexes » est volumineux** (~1500) — le resserrer (cacher le corporate de studio)
+Décision proprio (2026-06-02) : passer d'agrégateur passif à **copilote**. Sources **gelées** (ne pas en ajouter).
+Roadmap détaillée = `AUDIT.md` §7. Avancement :
+
+- ✅ **P0 Fondation FAITE** : pays NULL **56 % → 14 %** (dérivation centrale `deduirePays`, option « Lieu non précisé »),
+  **index GIN**, `error.tsx`/`loading.tsx`, **backup pg_dump** quotidien (`scripts/backup-db.sh` + cron 3h15),
+  surveillance Indeed tolérée (gardé sur décision proprio), doc CLAUDE.md §3/§8 corrigée.
+  ⚠️ **CI prête mais NON poussée** : le jeton `gh` n'a pas le scope `workflow` → `.github/workflows/ci.yml`
+  a été **sorti de l'historique** (commit retiré). À refaire : `gh auth refresh -h github.com -s workflow`
+  (étape navigateur proprio) puis recréer `ci.yml` (lint+test+build) et pousser.
+- ✅ **P1 Profil + scoring FAIT** (le différenciateur) : `domain/profil.ts` (+ Zod), `lib/scoring.ts` (pur, testé),
+  `ProfilPanel` (localStorage + cookie miroir), tri **« pour moi »** serveur, **badge ★ correspondance** sur les cartes.
+- ▶️ **Suite P2 (à faire)** : **suivi de candidatures** (statut par offre, en base → impose sauvegarde DB, faite),
+  **badge « nouveau depuis ta dernière visite »** (cookie), **recherche FTS** (`tsvector`), cache facettes,
+  **table `collecte_runs`** (observabilité), collecte concurrente.
+- ▶️ **P3** : **alertes ciblées** (recherche sauvegardée → email/Discord, + mentions légales) ; embeddings = **POC plus tard**.
+
+### Arbitrages proprio en attente
+1. **Décision produit** : l'onglet **« connexes » est volumineux** (~1580) — le resserrer (cacher le corporate de studio)
    ou le garder large ? *(arbitrage proprio)*
 2. ✅ **FAIT (2026-06-02)** : **filtres différenciants** dans le dashboard — **logiciel** / **spécialité** / **mode de travail**
    (le niveau existait déjà). Selects peuplés par facettes (`listerLogiciels`/`listerSpecialites`, `unnest`+comptage, triés par
