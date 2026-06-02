@@ -41,11 +41,21 @@ export interface UpsertResult {
   ecrits: number;
 }
 
-/** Insère/met à jour un lot d'offres. Retourne le nombre reçu et écrit. */
+/**
+ * Insère/met à jour un lot d'offres. Retourne le nombre **reçu** (avant filtre) et **écrit**.
+ *
+ * **Politique** : on ne **persiste pas** les offres `hors_scope` — elles ne sont **jamais affichées**
+ * (cf. `offres-repo`), donc les stocker ne ferait qu'alimenter du bruit en base. Le classifieur les
+ * a déjà écartées ; on garde `recus` = ce que la source a ramené (pour la surveillance « vide suspect »)
+ * et `ecrits` = ce qui entre réellement en base.
+ */
 export async function upsertOffres(liste: Offre[]): Promise<UpsertResult> {
   if (liste.length === 0) return { recus: 0, ecrits: 0 };
 
-  const rows = liste.map(toRow);
+  const aEcrire = liste.filter((o) => o.pertinence !== "hors_scope");
+  if (aEcrire.length === 0) return { recus: liste.length, ecrits: 0 };
+
+  const rows = aEcrire.map(toRow);
   const ecrits = await db
     .insert(offres)
     .values(rows)

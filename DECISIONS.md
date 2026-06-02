@@ -597,3 +597,17 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   pile dans la cible / 36 connexe), **AWN 25** (0 cœur / 9 connexe / 16 cachées — page d'accueil
   broadcast). **17 sources.** Playwright prouvé en production (Cloudflare franchi sans proxy payant).
   **Suite** : Cartoon Brew / ShowbizJobs / GrackleHQ / The Rookies, puis **Indeed** (risque ToS).
+
+## ADR-0028 — Ne plus persister les offres `hors_scope` (base propre)
+- **Date** : 2026-06-02. Amélioration proposée par le lead dev, validée par la proprio.
+- **Contexte** : les offres classées `hors_scope` ne sont **jamais affichées** (le dashboard ne lit que
+  `coeur`/`connexe`), mais elles étaient **stockées** — ~**35 % de la base** (1123/3284 lignes) de bruit
+  pur (surtout des sources « filet large » sans plancher : Hitmarker/Adzuna/HelloWork/RemoteOK/AWN).
+- **Décision** (lead dev) : `upsertOffres` **filtre les `hors_scope`** (point de passage unique de
+  toutes les sources). `recus` = ce que la source a ramené (préserve la surveillance « vide suspect ») ;
+  `ecrits` = ce qui entre réellement. Nettoyage ponctuel : `DELETE … WHERE pertinence='hors_scope'`.
+  Le classifieur continue de produire `hors_scope` (pour décider de **ne pas** stocker) — rien d'autre
+  ne change (dédup, purge, surveillance OK).
+- **Conséquence** : base **2161** lignes (630 cœur / 1531 connexe) vs 3284. Vérifié : RemoteOK 95 ramenées
+  → 46 écrites, `hors_scope` reste à 0 après collecte. **Perte assumée** : on ne peut plus auditer ce qui
+  a été rejeté sans relancer une collecte (acceptable — `signaux` n'étaient déjà pas persistés).
