@@ -138,9 +138,10 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
    avant** (Next 16 breaking changes).
    - ~~`pertinence`/`langue` au modèle~~ ✅ **FAIT (ADR-0011)**. ~~Classifieur + enrichissement~~ ✅ **FAIT**.
 2. **Connecteur générique ATS** (🟢 sans clé, ~100 % pertinent — **gros déblocage R&D ADR-0014**) :
-   Greenhouse/Lever/Ashby exposent les offres par studio. Bâtir 1 connecteur générique + `src/config/studios.ts`
-   (liste curée `{ slug, ats }`). Seeds confirmés : `riotgames`/greenhouse, `voodoo`/lever. Greenhouse
-   `?content=true` = desc riche. Plancher `connexe`. Cf. `SOURCES.md` Tier 1bis.
+   Greenhouse/Lever/Ashby exposent les offres par studio. Bâtir 1 connecteur générique + `src/config/studios.ts`.
+   **Liste-amorce de ~24 studios VÉRIFIÉE en réel (2026-06-02)** dans `SOURCES.md` Tier 1bis (Roblox 252,
+   Scopely 202, Riot 185, Epic 124, Rockstar 79, Supercell 46, Voodoo 123, thatgamecompany 25…). Greenhouse
+   `?content=true` = desc riche. Plancher `connexe`. **VFX/anim pas sur ATS → via boards Tier 3.**
 3. **APIs remote gratuites** (secondaire) : Himalayas/Jobicy/RemoteOK (sans auth, EN) — filtrage niche requis.
 4. **Scraping boards niche** (gros volume, cœur du « Joker ») : installer **Playwright**, attaquer
    **Hitmarker** / **GameJobs.co** / **The Rookies** (juniors). **ArtStation = Cloudflare → en dernier**.

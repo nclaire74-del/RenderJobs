@@ -47,7 +47,7 @@ La classification (ADR-0011) protège le flux : on peut élargir le filet sans s
 | **Jooble** | 🟢 API REST (clé) | Multi-pays | Agrégateur. Complément géo. |
 | **Arbeitnow** | 🟢 API **sans auth** | Europe (DE) + remote | Tier gratuit, beaucoup de remote tech. |
 | **Remotive / RemoteOK** | 🟢 API | 100 % remote tech/design | Pratique pour le filtre Remote. |
-| **EURES** | 🟢 API officielle UE | Europe | À évaluer (plan §4). |
+| ~~**EURES**~~ | 🔴 API **réservée aux partenaires** | Europe | **Vérifié 2026-06 : pas librement utilisable** (accès limité aux organisations partenaires reconnues). Écarté pour l'accès direct. |
 
 ## ⭐ Tier 1bis — API publiques d'ATS par studio (🟢 sans clé, JSON, légal) — **GROS DÉBLOCAGE**
 
@@ -63,10 +63,21 @@ Pertinence quasi **100 %** (ce sont les offres directes des studios). Vérifié 
 | **SmartRecruiters / Workable** | endpoints publics par entreprise | à tester | Idem, à cataloguer si studios concernés. |
 
 **Caveat** : les **slugs** se découvrent **un par un** (devinettes souvent en 404 ; ex. `ubisoft`,
-`remedy-entertainment` → 404). → bâtir une **liste curée de studios** (slug + ATS), pilotée par config,
-type `src/config/studios.ts`. Seeds confirmés : `riotgames`/greenhouse, `voodoo`/lever. Source d'amorçage :
-annuaire « Top game studios hiring artists » (The Rookies). **Connecteur générique ATS** = 1 seul code,
-N studios → forte scalabilité. **Candidat n°1 pour la prochaine grosse étape source.**
+`unity`, `king` → 404 / autre ATS type Workday). → bâtir une **liste curée de studios** (slug + ATS),
+pilotée par config `src/config/studios.ts`. **Connecteur générique ATS** = 1 seul code, N studios →
+forte scalabilité. **Candidat n°1 pour la prochaine grosse étape source.** Mine de slugs :
+[Ultimate List of Game Company Job Boards](https://www.gameindustrycareerguide.com/ultimate-list-game-company-job-boards/).
+
+**Liste-amorce VÉRIFIÉE en réel (2026-06-02)** — `slug` / ATS (offres au sondage) :
+
+| Greenhouse | Lever | Ashby |
+|---|---|---|
+| `roblox` (252), `scopely` (202), `riotgames` (185), `epicgames` (124), `rockstargames` (79), `discord` (71), `naughtydog` (11), `housemarque` (7), `singularity6` (5), `digitalextremes` (3), `wooga` (2), `bungie` (1) | `voodoo` (34), `avalanchestudios` (17), `kabam` (15), `jamcity` (6), `theorycraftgames` (1) | `voodoo` (123), `supercell` (46), `thatgamecompany` (25), `improbable` (6), `take2` (5), `paradox` (3), `secondDinner` (2) |
+
+> Existants mais 0 offre au sondage (à garder, ils rouvriront) : `mediatonic`/gh, `frontier`/ashby,
+> `niantic`/ashby, `pocketgems`/gh, `jagex`/lever. `voodoo` répond sur Lever **et** Ashby → préférer Ashby (plus complet).
+> **VFX/anim** (DNEG, Framestore, Weta, ILM, Digital Domain, Cinesite…) **ne répondent pas** sur ces ATS
+> → passer par leurs boards dédiés (Tier 3, scraping) plutôt que par ATS.
 
 ## Tier 1ter — APIs remote gratuites (🟢 sans auth) — volume + contenu **EN**
 
@@ -104,10 +115,11 @@ Pas d'API publique → navigateur automatisé (Playwright). Offres **publiques d
 - **The Rookies** (therookies.co) 🟠 — **juniors/talents émergents** (cible n°1 du produit). Priorité.
 - **Zerply** 🟠 — VFX & animation.
 
-**VFX / film / animation :**
-- **VES Job Board**, **vfxjobs.com**, **vfxengine.com** 🟠 — boards VFX dédiés.
+**VFX / film / animation :** (les grands studios VFX — DNEG, Framestore, Weta, ILM, Digital Domain,
+Cinesite… — **ne sont PAS sur les ATS publics** (cf. Tier 1bis) → c'est ICI qu'on les capte.)
+- **VES Job Board** (vesglobal.org/jobboard), **vfxjobs.com**, **vfxengine.com** 🟠 — boards VFX dédiés (offres studios worldwide).
 - **Rebelway** (Houdini) 🟠 — excellent pour le filtre logiciel Houdini.
-- **ShowbizJobs**, **ProductionHUB**, **AWN (Animation World Network)** 🟠 — animation/film US fort.
+- **ShowbizJobs** (animation-vfx), **ProductionHUB**, **AWN (Animation World Network)** 🟠 — animation/film US fort. AWN a un **flux RSS** (à brancher).
 - **Mandy.com** 🟠 — crew film/TV (filtrer le casting).
 
 ## Tier 4 — Hostiles (étape ultérieure, infra proxy requise)
