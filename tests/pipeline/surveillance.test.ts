@@ -27,6 +27,13 @@ describe("surveillance — analyserSante", () => {
     expect(analyserSante([ok("nouvelle", 0)], { nouvelle: 1 })).toHaveLength(0); // sous le seuil
   });
 
+  it("tolère le vide d'une source à anti-bot intermittent (Indeed) mais signale son échec franc", () => {
+    // 0 récupéré + offres en base : normalement « vide suspect », mais Indeed est toléré (AUDIT §F).
+    expect(analyserSante([ok("indeed", 0)], { indeed: 35 })).toHaveLength(0);
+    // En revanche une erreur franche reste signalée.
+    expect(analyserSante([echec("indeed", "timeout")], { indeed: 35 })).toHaveLength(1);
+  });
+
   it("agrège plusieurs alertes", () => {
     const a = analyserSante(
       [echec("awn", "x"), ok("hitmarker", 0), ok("afjv", 89)],

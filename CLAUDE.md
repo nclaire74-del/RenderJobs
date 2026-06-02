@@ -47,14 +47,17 @@ jamais de **données personnelles** (posts perso de recruteurs) → RGPD ; ces a
 
 - **Framework** : Next.js 16 (App Router) + React 19 + TypeScript. Turbopack par défaut.
 - **Style** : Tailwind CSS v4.
-- **DB** : PostgreSQL (plein-texte + géo natifs) via **Drizzle ORM**. Hébergement **Neon**.
+- **DB** : **PostgreSQL auto-hébergé** sur le serveur Linux (port **5434**) via **Drizzle ORM**
+  (Neon abandonné — cf. ADR-0003). Recherche plein-texte = `ILIKE` aujourd'hui ; FTS `tsvector`
+  prévu (roadmap audit P2). `latitude`/`longitude` stockés mais pas encore exploités.
 - **Validation** : Zod (parsing des API externes — couche critique).
-- **Tests** : Vitest (pipeline normalisation/enrichissement surtout).
-- **Scraping** : Playwright (Chromium headless) pour la prod ; fetch+cheerio quand suffisant ;
-  MCP Chrome pour l'exploration R&D (non connectée pour l'instant). Cf. ADR-0008.
-- **Cron** : Vercel Cron en prod ; script npm en local.
-- **Notifications** : webhook Discord + email (Resend/SendGrid) — Phase 2.
-- **Hébergement** : Vercel (front + cron) + Neon (Postgres).
+- **Tests** : Vitest (pipeline + `normalize` + lib). ~160 tests.
+- **Scraping** : Playwright (Chromium headless) pour les sites durs ; fetch+cheerio quand suffisant ;
+  MCP Chrome pour l'exploration R&D. Cf. ADR-0008.
+- **Cron** : **cron système** (crontab `clara`), 3 cadences (express 5 min / léger 20 min / complet 2 h).
+- **Notifications** : webhook Discord (alertes techniques) en place ; email utilisateur — Phase 2.
+- **Hébergement** : **auto-hébergé** — serveur Linux `333SRV`, site servi en build prod sous **systemd
+  `clara-hub`**, Postgres local. (Vercel/Neon écartés.)
 
 > ⚠️ Next.js 16 a des **changements de rupture** vs les versions antérieures. Avant d'écrire du
 > code de routing/API/config, consulter `node_modules/next/dist/docs/` (cf. `AGENTS.md`).
@@ -138,6 +141,8 @@ Pour ne pas se perdre au fil des sessions :
 ## 8. Où en est-on
 
 Feuille de route : Phase 0 (fondations) → 1 (MVP) → 2 (vitesse/communauté) → 3 (sources avancées).
-**État courant** : Phase 0 — scaffold + fondations docs posés ; posture scraping tranchée (agressive,
-ADR-0007) ; carte des sources faite (`SOURCES.md`). **Prochain** : monter le moteur de collecte
-(Playwright + 1er connecteur API, France Travail/Adzuna). Détail vivant dans `HANDOFF.md`.
+**État courant (2026-06)** : **MVP en production** — 19 connecteurs, ~2270 offres, dédup inter-sources,
+enrichissement, cron 3 cadences, surveillance, systemd. Collecte considérée **finie** (cf. AUDIT.md).
+**Virage en cours** : d'agrégateur passif → **copilote** (profil + scoring de correspondance, suivi de
+candidatures, badge nouveautés, alertes ciblées) ; fondation données réparée (pays). Détail vivant et
+priorités dans **`HANDOFF.md`** + roadmap dans **`AUDIT.md`** §7.

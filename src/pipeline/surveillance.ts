@@ -14,6 +14,13 @@ import type { CollectReport } from "./collect";
 /** Seuil : une source ayant au moins ce nombre d'offres en base ne devrait jamais revenir à 0. */
 const SEUIL_VIDE_SUSPECT = 3;
 
+/**
+ * Sources dont un « 0 récupérée » est **normal** (anti-bot qui passe par à-coups) → pas d'alerte
+ * « vide suspect », sinon faux positif un run sur deux qui érode la confiance dans les alertes
+ * (AUDIT §F). Un **échec** franc (erreur levée) reste signalé. Indeed est conservé mais bruyant.
+ */
+const SOURCES_VIDE_TOLERE: ReadonlySet<string> = new Set(["indeed"]);
+
 export type NiveauAlerte = "echec" | "vide_suspect";
 
 export interface Alerte {
@@ -38,7 +45,11 @@ export function analyserSante(
       alertes.push({ source: r.source, niveau: "echec", message: `échec de collecte : ${r.erreur}` });
       continue;
     }
-    if (r.recuperees === 0 && (comptesParSource[r.source] ?? 0) >= SEUIL_VIDE_SUSPECT) {
+    if (
+      r.recuperees === 0 &&
+      !SOURCES_VIDE_TOLERE.has(r.source) &&
+      (comptesParSource[r.source] ?? 0) >= SEUIL_VIDE_SUSPECT
+    ) {
       alertes.push({
         source: r.source,
         niveau: "vide_suspect",

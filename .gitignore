@@ -47,3 +47,6 @@ collect.log
 # Playwright
 test-results/
 playwright-report/
+
+# Sauvegardes DB locales (script backup-db.sh)
+backups/
