@@ -578,3 +578,22 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   prévoir throttle + retry, et garder l'option proxy en réserve.
 - **Suite** : brique navigateur partagée → connecteurs **AWN** (VFX/anim, le plus propre) puis
   **ArtStation** (cible n°1), puis Cartoon Brew/ShowbizJobs/GrackleHQ, enfin **Indeed** (risque ToS).
+
+## ADR-0027 — Connecteurs ArtStation (API publique) + AWN (navigateur headless)
+- **Date** : 2026-06-02. Suite ADR-0026 (infra Playwright), décision proprio « VFX/anim + ArtStation ».
+- **ArtStation** (cible n°1) : la page est Cloudflare, MAIS l'**API JSON publique**
+  `api/v2/jobs/public/jobs.json?page=N&per_page=50` répond **en direct sans navigateur** (vérifié). →
+  connecteur **API** classique `src/sources/artstation/` (Zod, pagination, garde-fou 6 pages). Riche :
+  remote, niveau→`experience`, salaire, lieu (`recruitment_localities`), desc+about+skills. Board curé
+  art games/film → **plancher `connexe`** ; cœur 3D promu par le titre. Fallback navigateur documenté
+  si Cloudflare bloque l'API un jour.
+- **AWN** (Animation World Network) : liste **Cloudflare + JS** → **brique navigateur**
+  `src/lib/navigateur.ts` (`htmlRendu`, Chromium headless, **import dynamique** de playwright pour ne
+  pas casser le build Next) → parsing cheerio des cartes `.job-main-data`. Board **large média/anim**
+  (porte du TV/broadcast) → **pas de plancher** (comme Hitmarker) : le classifieur strict filtre.
+- **Cadence** : ArtStation (API rapide) → cron **léger 20 min** + complet ; AWN (navigateur ~12 s) →
+  **complet 2 h uniquement** (politesse + coût).
+- **Conséquence** : `tsc`+`eslint`+**130 tests** (+7), build Next OK. Réel : **ArtStation 90** (54 cœur 3D
+  pile dans la cible / 36 connexe), **AWN 25** (0 cœur / 9 connexe / 16 cachées — page d'accueil
+  broadcast). **17 sources.** Playwright prouvé en production (Cloudflare franchi sans proxy payant).
+  **Suite** : Cartoon Brew / ShowbizJobs / GrackleHQ / The Rookies, puis **Indeed** (risque ToS).

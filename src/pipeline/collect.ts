@@ -64,6 +64,14 @@ import {
   fetchOffres as fetchRemotive,
   normalize as normalizeRemotive,
 } from "@/sources/remotive";
+import {
+  fetchOffres as fetchArtStation,
+  normalize as normalizeArtStation,
+} from "@/sources/artstation";
+import {
+  fetchOffres as fetchAwn,
+  normalize as normalizeAwn,
+} from "@/sources/awn";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
@@ -337,6 +345,34 @@ export async function collectRemotive(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte ArtStation (board art games/film via API publique) et enregistre. */
+export async function collectArtStation(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchArtStation();
+    // Board curé art (games/film) → plancher `connexe` ; le cœur 3D est promu par le titre.
+    const offres: Offre[] = bruts
+      .map(normalizeArtStation)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "artstation", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "artstation", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Lance la collecte AWN (board animation/film/VFX via navigateur headless) et enregistre. */
+export async function collectAwn(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchAwn();
+    // Board large média/animation → pas de plancher (comme Hitmarker) : le classifieur strict filtre.
+    const offres: Offre[] = bruts.map(normalizeAwn).map((o) => traiter(o));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "awn", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "awn", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -355,6 +391,8 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collect80Level(),
     await collectJobicy(),
     await collectRemotive(),
+    await collectArtStation(),
+    await collectAwn(),
   ];
 }
 
