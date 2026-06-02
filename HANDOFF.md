@@ -51,8 +51,11 @@ Liste à jour = `.env.example`.
 
 1. **Décision produit** : l'onglet **« connexes » est volumineux** (~1500) — le resserrer (cacher le corporate de studio)
    ou le garder large ? *(arbitrage proprio)*
-2. **Filtres différenciants** dans le dashboard : par **logiciel** / **spécialité** / **niveau** (le vrai « plus » du produit,
-   l'enrichissement les calcule déjà). Améliorer l'ergonomie/recherche.
+2. ✅ **FAIT (2026-06-02)** : **filtres différenciants** dans le dashboard — **logiciel** / **spécialité** / **mode de travail**
+   (le niveau existait déjà). Selects peuplés par facettes (`listerLogiciels`/`listerSpecialites`, `unnest`+comptage, triés par
+   fréquence). Containment `text[] @>` côté repo, params portés dans l'URL (partageable). Spécialités libellées FR. Commit `0af4a6a`.
+   → **Reste possible** : étiquettes cliquables (clic sur un tag = applique le filtre) ; recherche `q` en plein-texte natif Postgres
+   (actuellement `ILIKE`) ; facettes dépendantes des filtres courants (aujourd'hui elles ne dépendent que de la vue).
 3. **Dédup affinée par lieu** (éviter de sur-fusionner des postes distincts d'un même studio au même titre).
 4. **Sources restantes** : ShowbizJobs (analyse fine), Cartoon Brew (retrouver l'URL), collecte incrémentale Hitmarker
    (éviter de re-fetch 150 pages). Indeed dépend du bon vouloir de Cloudflare → la surveillance préviendra si ça casse.
