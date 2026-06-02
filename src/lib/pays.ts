@@ -8,7 +8,13 @@
  *
  * Best-effort : une entrée inconnue est renvoyée telle quelle (trimée), jamais perdue.
  */
+/** Valeur de pays pour les offres **télétravail** sans lieu géographique précis (filtre « Lieu »). */
+export const PAYS_DISTANCE = "À distance";
+
 const NOM_PAYS: Record<string, string> = {
+  // Mentions « télétravail/monde » fournies comme pays → fusionnées dans une valeur unique.
+  remote: PAYS_DISTANCE, worldwide: PAYS_DISTANCE, global: PAYS_DISTANCE,
+  anywhere: PAYS_DISTANCE, "remote - global": PAYS_DISTANCE,
   fr: "France", france: "France",
   gb: "Royaume-Uni", uk: "Royaume-Uni", "united kingdom": "Royaume-Uni",
   us: "États-Unis", usa: "États-Unis", "united states": "États-Unis",
@@ -40,4 +46,48 @@ export function nomPays(brut: string | null | undefined): string | null {
   const t = brut.trim();
   if (!t) return null;
   return NOM_PAYS[t.toLowerCase()] ?? t;
+}
+
+/** Un segment de lieu est-il un pays **reconnu** ? (≠ `nomPays`, qui laisse passer l'inconnu.) */
+function paysSiConnu(segment: string): string | null {
+  // Retire un éventuel préfixe code ISO « ES - », « US - » devant le nom.
+  const net = segment.replace(/^[A-Za-z]{2}\s*-\s*/, "").trim();
+  return NOM_PAYS[net.toLowerCase()] ?? null;
+}
+
+/**
+ * Extrait un **pays reconnu** d'une chaîne de lieu libre, telle que fournie par les ATS/boards :
+ * « San Mateo, CA, United States », « ES - Barcelona, Spain », « Singapore », « Montreal,Quebec,Canada ».
+ * Multi-lieux (« A; B; C ») → on prend le **premier**. On teste les segments du dernier au premier
+ * et on renvoie le **premier reconnu** comme pays (le pays est presque toujours en fin de chaîne).
+ * Renvoie `null` si aucun segment n'est un pays connu (ex. ville seule « Brighton »).
+ */
+export function paysDepuisLieu(lieu: string | null | undefined): string | null {
+  if (!lieu) return null;
+  const premierLieu = lieu.split(";")[0] ?? "";
+  const segments = premierLieu.split(",").map((s) => s.trim()).filter(Boolean);
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const connu = paysSiConnu(segments[i]);
+    if (connu) return connu;
+  }
+  return null;
+}
+
+/**
+ * **Pays effectif** d'une offre, par ordre de fiabilité : (1) le `pays` déjà posé par la source
+ * (normalisé) ; (2) déduit de la chaîne `ville`/lieu ; (3) « À distance » si l'offre est en
+ * télétravail ; sinon `null` (lieu réellement inconnu). Centralise la réparation du filtre géo
+ * (cf. AUDIT §C : pays NULL sur 56 % du catalogue). Pur, testable.
+ */
+export function deduirePays(
+  paysBrut: string | null | undefined,
+  ville: string | null | undefined,
+  modeTravail: string | null | undefined,
+): string | null {
+  const direct = nomPays(paysBrut);
+  if (direct) return direct;
+  const duLieu = paysDepuisLieu(ville);
+  if (duLieu) return duLieu;
+  if (modeTravail === "remote") return PAYS_DISTANCE;
+  return null;
 }
