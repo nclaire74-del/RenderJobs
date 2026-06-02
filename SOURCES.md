@@ -22,7 +22,9 @@ Sondage HTTP (statut, type, marqueurs SPA/Cloudflare, liens d'offres dans le HTM
 | **PixelCareer** | HTML server-rendered, ~23 liens d'offres | 🟠 fetch+cheerio faisable (agrégateur 3D/anim/VFX) |
 | **80 Level Jobs** | **Next.js** (`__NEXT_DATA__`) → données dans le JSON embarqué | 🟠 parsable sans navigateur (lire `__NEXT_DATA__`) |
 | **GameJobs.co** | **Cloudflare** + SPA | 🔴 Playwright |
-| **GrackleHQ** | **Cloudflare** (page-défi 7 ko) | 🔴 Playwright |
+| **GrackleHQ** | App JS → navigateur ; cartes `.joblisting` (`/rd/{id}`) | ✅ **Fait (ADR-0029)** — 30 offres, plancher connexe |
+| **ShowbizJobs** | SPA à facettes, cartes non exposées simplement | ⏸️ différé (rabbit-hole) |
+| **Cartoon Brew** | `jobs.cartoonbrew.com` ne résout plus (DNS) | ⏸️ URL à retrouver |
 | **Motionographer** | **Cloudflare** (mais HTML servi) | 🟠/🔴 à retenter avec en-têtes navigateur |
 | **AWN (jobs.awn.com)** | **403 Cloudflare** en curl → ✅ **Playwright headless passe** (ADR-0027) | ✅ **Fait** (navigateur, sans plancher) |
 | **ArtStation** | Page Cloudflare MAIS **API JSON publique** `api/v2/jobs/public` accessible **en direct** | ✅ **Fait (ADR-0027)** — 90 offres, 54 cœur 3D |

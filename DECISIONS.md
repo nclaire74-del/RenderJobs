@@ -611,3 +611,21 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
 - **Conséquence** : base **2161** lignes (630 cœur / 1531 connexe) vs 3284. Vérifié : RemoteOK 95 ramenées
   → 46 écrites, `hors_scope` reste à 0 après collecte. **Perte assumée** : on ne peut plus auditer ce qui
   a été rejeté sans relancer une collecte (acceptable — `signaux` n'étaient déjà pas persistés).
+
+## ADR-0029 — GrackleHQ (navigateur) ; The Rookies / Cartoon Brew / ShowbizJobs écartés ou différés
+- **Date** : 2026-06-02. Suite du chantier sites durs (Playwright).
+- **GrackleHQ** ✅ : agrégateur jeu vidéo. App JS → **brique navigateur** ; cartes `.joblisting`
+  (`a[href="/rd/{id}"]` = titre + redirection vers la source, `div` « Société - Lieu »). Plancher
+  `connexe`. Navigateur → **cron complet 2 h** uniquement. Réel : **30 offres** (11 cœur / 19 connexe).
+  Grackle re-liste une même offre sous plusieurs `/rd/` → la **dédup (ADR-0024)** les fusionne à
+  l'affichage (et préfère la copie ATS). Recoupe beaucoup l'existant (Epic/Scopely déjà via ATS/Hitmarker).
+- **The Rookies** ❌ écarté : `/jobs` n'est qu'un **article de blog** pointant vers un **fichier Dropbox
+  (.xlsx)** + logos d'autres boards → **aucune offre structurée** à scraper. (Cible juniors servie
+  autrement : raccourcis stage/alternance + AFJV/Games-Career.)
+- **Cartoon Brew** ⏸️ : `jobs.cartoonbrew.com` **ne résout plus** (DNS) → URL à retrouver avant de coder.
+- **ShowbizJobs** ⏸️ différé : SPA à **facettes** (location/jobtitle/category) ; les cartes d'offres ne
+  sont pas exposées simplement dans le DOM (pas de `.job-card`, liens = filtres) → rabbit-hole, à
+  reprendre avec une analyse plus fine (peut nécessiter de suivre une facette/recherche).
+- **Conséquence** : `tsc`+`eslint`+**139 tests** (+4). **18 sources.** Playwright sert maintenant 3 sources
+  (AWN, GrackleHQ + ArtStation en direct API). **Reste** : Indeed (le plus hostile) ; Cartoon Brew (URL) ;
+  ShowbizJobs (analyse fine).

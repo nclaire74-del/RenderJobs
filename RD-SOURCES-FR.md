@@ -42,12 +42,16 @@ donc pas de perte critique. (Couverture directe = R&D « découverte de slugs »
 
 ## 3. Nouveaux canaux FR à brancher (par faisabilité)
 
-- 🟡 **Welcome to the Jungle** — **canal FR majeur** (beaucoup de studios/éditeurs y publient). **API publique
-  ouverte** confirmée : `GET https://api.welcometothejungle.com/api/v1/organizations` (200, annuaire avec
-  `slug`, `jobs_count`, `sectors`, `offices`). ⚠️ Les **offres** ne sont pas sur cet endpoint (sous-chemins
-  `/jobs` → 404) : elles passent par un **index Algolia** (clés `appId`+search-key à extraire du bundle JS,
-  même méthode qu'ArtStation/Hitmarker). **Faisable et légitime** (API publique, clés Algolia client) →
-  **prochaine sonde dédiée** : récupérer les clés Algolia + l'index jobs. Fort potentiel FR.
+- 🟠 **Welcome to the Jungle** — **canal FR majeur**, mais **plus dur que prévu** (R&D approfondie 2026-06-02,
+  via navigateur). Ce qui est établi : **API annuaire publique ouverte** `GET api.welcometothejungle.com/api/v1/organizations`
+  (200, `slug`/`jobs_count`/`sectors`/`offices`) ; **Algolia** (appId **`csekhvms53`**) utilisé **uniquement** pour
+  les widgets « sociétés » et « articles » (`wk_cms_organizations_production`, `wk_cms_articles_production`) — **PAS
+  d'index jobs** (25 bundles scannés). ⚠️ **Les offres elles-mêmes sont servies côté serveur / API interne** :
+  endpoints publics jobs testés → **404** ; page rendue → **ni `__NEXT_DATA__` ni cartes DOM exposées** ; fetch
+  serveur → **mur anti-bot**. → **PAS un quick win.** Voie réaliste : (a) **capture navigateur** de l'XHR interne
+  *quand les résultats s'affichent vraiment* (pas obtenu en sondage — page de recherche-landing) ; ou (b) **Playwright**
+  (rendu + parse DOM). **Effort moyen-élevé → à reporter** derrière les gains faciles ci-dessous. L'annuaire
+  (`jobs_count` par société) reste utilisable comme **signal** ou pour cibler des studios.
 - 🟡 **Gaming Campus / `fr.jobs.game`** — board FR jeu vidéo + esport. `wp-json` **désactivé** (404) → pas
   d'API REST ; mais **JSON-LD `JobPosting`** présent sur les pages → scraping via JSON-LD/HTML (effort moyen).
 - ⚪ **Apec** (cadres) : généraliste, JV minoritaire et redondant → basse priorité.
@@ -67,14 +71,15 @@ donc pas de perte critique. (Couverture directe = R&D « découverte de slugs »
 |---|---|---|---|
 | AFJV, France Travail, Games-Career, Adzuna | ✅ branché | — | — |
 | **Amplitude (gh) + Don't Nod/Gameloft (SR) + Focus (ashby)** | à brancher | ajouter à `studios.ts` (+ support **SmartRecruiters**) | faible |
-| **Welcome to the Jungle** | API ouverte, jobs via Algolia | **sonde Algolia** puis connecteur | moyen |
 | Gaming Campus (`fr.jobs.game`) | JSON-LD | connecteur scraping léger | moyen |
+| **Welcome to the Jungle** | annuaire ouvert ; **jobs SSR/API interne** | capture navigateur des résultats **ou** Playwright | moyen-élevé → **reporter** |
 | Clusters/SNJV/écoles | relayés via AFJV | rien (sauf écoles plus tard pour juniors) | — |
 | LinkedIn/Indeed | interdit (cf. `RD-LINKEDIN.md`) | soumission communautaire only | — |
 
 **Ordre conseillé** : (1) **Amplitude + Focus + Don't Nod** dans `studios.ts` (gain immédiat, FR, cœur),
-en ajoutant **SmartRecruiters** au connecteur ATS ; (2) **Welcome to the Jungle** (sonde Algolia → connecteur) ;
-(3) Gaming Campus. Les studios FR hors-ATS sont déjà couverts via AFJV/FT/WTTJ.
+en ajoutant **SmartRecruiters** au connecteur ATS ; (2) **Gaming Campus** (JSON-LD, scraping léger) ;
+(3) **Welcome to the Jungle** seulement quand on aura l'infra Playwright (effort moyen-élevé, voir §3).
+Les studios FR hors-ATS sont déjà couverts via AFJV/FT.
 
 ## 6. Et ailleurs (après la France)
 

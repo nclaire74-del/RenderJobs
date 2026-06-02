@@ -72,6 +72,10 @@ import {
   fetchOffres as fetchAwn,
   normalize as normalizeAwn,
 } from "@/sources/awn";
+import {
+  fetchOffres as fetchGrackle,
+  normalize as normalizeGrackle,
+} from "@/sources/gracklehq";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
@@ -375,6 +379,21 @@ export async function collectAwn(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte GrackleHQ (agrégateur jeu vidéo via navigateur headless) et enregistre. */
+export async function collectGrackle(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchGrackle();
+    // Agrégateur curé jeu vidéo → plancher `connexe` ; cœur promu par le titre.
+    const offres: Offre[] = bruts
+      .map(normalizeGrackle)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "gracklehq", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "gracklehq", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -395,6 +414,7 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collectRemotive(),
     await collectArtStation(),
     await collectAwn(),
+    await collectGrackle(),
   ];
 }
 
