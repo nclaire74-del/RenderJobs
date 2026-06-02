@@ -13,7 +13,10 @@ GameJobs.co, RemoteOK, RemoteGameJobs, ATS) / complet **2 h** (+ FT, Adzuna, Hit
 Dashboard = Server Component **dynamique** (lit la DB en direct) → l'offre apparaît dès qu'elle est en base.
 `scripts/cron-collect.sh` (flock anti-chevauchement, log `collect.log`). Démon `cron` actif.
 **PURGE AUTO** (ADR-0020) : offre non revue depuis >30 j = supprimée (garde-fou : ≥1 source réussie).
-**🆕 DÉDUP INTER-SOURCES (ADR-0024)** : signature `cle_dedup` = studio+titre normalisés (null si studio
+**🆕 SURVEILLANCE sources** : alerte si une source **plante** ou **revient à 0** alors qu'elle avait des
+offres (casse silencieuse). Log `collect.log` (`⚠️`) + **webhook Discord** si `ALERT_WEBHOOK_URL` (.env.local).
+`src/pipeline/surveillance.ts`. Reste 2 améliorations proposées : ne plus stocker `hors_scope` ; régénérer les clés API.
+**DÉDUP INTER-SOURCES (ADR-0024)** : signature `cle_dedup` = studio+titre normalisés (null si studio
 inconnu) ; dédup **à la lecture** (CTE `row_number`, garde la source la plus directe : ATS>FT>boards>agrégateurs) ;
 comptages dédupés. **Non destructif** (rien supprimé). Réel : 311 doublons masqués sur ~2043. Migration `0002`.
 ⚠️ Peut **sur-fusionner** des postes distincts d'un même studio au même titre (affinage possible avec le lieu).
