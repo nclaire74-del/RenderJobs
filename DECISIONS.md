@@ -456,3 +456,49 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
 - **Raison** : fraîcheur temps réel automatique, sûre (garde-fou anti-vidage), simple et universelle.
 - **Conséquence** : vérifié en réel — purge à blanc = 0 (tout frais) ; offre injectée à −40 j =
   supprimée ; offres récentes intactes. 3 tests purs (`seuilPurge`). 88 tests verts au total.
+
+## ADR-0021 — 3 sources gains-faciles : GameJobs.co (Atom), RemoteOK (API), HelloWork (JSON-LD)
+- **Date** : 2026-06-02.
+- **Contexte** : objectif proprio « base **riche** ». R&D : flux/API propres existants, + HelloWork
+  explicitement demandé. Sondage réel : GameJobs.co a un **flux Atom** (`/?format=atom`, 100 entrées) ;
+  RemoteOK une **API JSON** (`?tags=design`) ; **HelloWork** = page de recherche server-rendered
+  (sans Cloudflare) + **JSON-LD JobPosting riche** par offre (salaire €, `validThrough`).
+- **Décisions** (lead dev) :
+  1. **`src/sources/gamejobs-co/`** (Atom, `fast-xml-parser`) : titre « <Rôle> at <Studio> », `id`=URL.
+     Board curé game dev → **plancher `connexe`**. Flux minimal (pas de description → tri sur le titre).
+  2. **`src/sources/remoteok/`** (API JSON, ignore la mention légale sans `position`) : tags→description,
+     salaire USD, mode remote. **Attribution honorée**. Généraliste → **pas de plancher** (tri strict).
+  3. **`src/sources/hellowork/`** (recherche FR par phrases métier → URLs → JSON-LD, comme Hitmarker) :
+     salaire € (MonetaryAmount→texte), lieu FR, **ignore les offres expirées** (`validThrough` < now).
+     Généraliste FR → **pas de plancher** (tri strict).
+  4. **Correctif tri (classer.ts)** : HelloWork fait remonter du **commerce de détail** de jeux vidéo
+     (« Vendeur Jeux Vidéo », « Assistant Librairie ») promu cœur via « jeux vidéo ». → ajout à
+     `BRUIT_DUR` : vendeur/vendeuse/libraire/librairie/caissier/employé de rayon/hôte(sse) de caisse.
+- **Conséquence** : `tsc`+`eslint`+**101 tests** (+13). Réel : GameJobs.co **100** (31 cœur/69 connexe),
+  RemoteOK **95** (0 cœur/46 connexe/49 cachées — densité 3D faible, volume créatif), HelloWork **125**
+  (25 cœur/57 connexe/43 cachées) — cœur FR pertinent (Gameplay Animator BGE2, 3D Animator…), faux
+  positifs retail **éliminés**. **10 sources**, base ≈ **2900 offres**. Indeed/LinkedIn restent ⚫/🔴.
+
+## ADR-0022 — Fraîcheur « quasi temps réel » : cron système à deux vitesses + lecture DB directe
+- **Date** : 2026-06-02.
+- **Contexte** : exigence proprio — la base doit **s'actualiser en temps réel** (« dès qu'une offre est
+  faite, elle apparaît sur le site »). Réalité : nos sources se **sondent** (RSS/API/scraping), donc
+  « temps réel » = **polling fréquent**. Le dashboard est un Server Component **dynamique** (lit
+  `searchParams`, aucun cache/revalidate) → il lit Postgres **à chaque requête** : dès qu'une offre est
+  en base, elle s'affiche. Manquait l'**ordonnanceur**.
+- **Décisions** (lead dev) :
+  1. **Cron système** (`crontab` de `clara`, le serveur est l'hôte de prod auto-hébergé, ADR-0003) à
+     **deux vitesses**, pour la fraîcheur **sans marteler** les sites : **toutes les 20 min** les
+     sources **légères** (1 requête : AFJV, Games-Career, GameJobs.co, RemoteOK, RemoteGameJobs, ATS)
+     via `collecterLegerEtPurger()` ; **toutes les 2 h** la **collecte complète** (+ FT, Adzuna,
+     Hitmarker, HelloWork = multi-requêtes/quota) via `collecterEtPurger()`.
+  2. **`scripts/cron-collect.sh`** : `flock -n` (verrou par mode) empêche tout chevauchement ; logs
+     horodatés dans `collect.log` (gitignore). `scripts/collect.ts` accepte `-- leger`.
+  3. **`collectLeger()` / `collecterLegerEtPurger()`** ajoutés à `collect.ts` (la purge tourne dans les
+     deux modes, idempotente, avec le garde-fou « au moins une source réussie »).
+- **Raison** : effet « live » sur les flux niche jeu/3D les plus frais, tout en restant **poli** envers
+  les sources lourdes ; aucune dépendance à Vercel (auto-hébergé).
+- **Conséquence** : crontab installé (démon `cron` actif), wrapper léger vérifié en réel (~1 min, purge
+  incluse). **Limite assumée** : latence ≤ 20 min (léger) / 2 h (complet), pas l'instantané strict.
+  **Évolutions** : affiner les cadences si une source rate-limite ; collecte incrémentale Hitmarker via
+  `<lastmod>` du sitemap (éviter de re-fetch 150 pages à chaque run) ; webhooks si une source en offre.

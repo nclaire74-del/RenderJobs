@@ -32,6 +32,18 @@ import {
   fetchOffres as fetchHitmarker,
   normalize as normalizeHitmarker,
 } from "@/sources/hitmarker";
+import {
+  fetchOffres as fetchGameJobsCo,
+  normalize as normalizeGameJobsCo,
+} from "@/sources/gamejobs-co";
+import {
+  fetchOffres as fetchHelloWork,
+  normalize as normalizeHelloWork,
+} from "@/sources/hellowork";
+import {
+  fetchOffres as fetchRemoteOk,
+  normalize as normalizeRemoteOk,
+} from "@/sources/remoteok";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
@@ -181,6 +193,64 @@ export async function collectHitmarker(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte GameJobs.co (board game dev via flux Atom) et enregistre. */
+export async function collectGameJobsCo(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchGameJobsCo();
+    // Board curé game dev → plancher `connexe` ; cœur piloté par le titre.
+    const offres: Offre[] = bruts
+      .map(normalizeGameJobsCo)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "gamejobs-co", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return {
+      source: "gamejobs-co",
+      recuperees: 0,
+      ecrites: 0,
+      erreur: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
+/** Lance la collecte HelloWork (généraliste FR via recherche + JSON-LD) et enregistre. */
+export async function collectHelloWork(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchHelloWork();
+    // Généraliste FR (filet large) → **pas de plancher** : le classifieur strict filtre (comme Adzuna).
+    const offres: Offre[] = bruts
+      .map(({ raw, url }) => normalizeHelloWork(raw, url))
+      .map((o) => traiter(o));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "hellowork", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return {
+      source: "hellowork",
+      recuperees: 0,
+      ecrites: 0,
+      erreur: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
+/** Lance la collecte RemoteOK (board remote, API JSON) et enregistre. */
+export async function collectRemoteOk(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchRemoteOk();
+    // Généraliste remote → **pas de plancher** : le classifieur strict filtre.
+    const offres: Offre[] = bruts.map(normalizeRemoteOk).map((o) => traiter(o));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "remoteok", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return {
+      source: "remoteok",
+      recuperees: 0,
+      ecrites: 0,
+      erreur: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -191,6 +261,9 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collectAts(),
     await collectRemoteGameJobs(),
     await collectHitmarker(),
+    await collectGameJobsCo(),
+    await collectHelloWork(),
+    await collectRemoteOk(),
   ];
 }
 
@@ -201,12 +274,37 @@ export interface CollectGlobalResult {
 }
 
 /**
+ * Sources **légères** (1 requête réseau chacune, pas de limite de débit) → sûres à rafraîchir
+ * **souvent** (cron 20 min) pour un effet « quasi temps réel » sur les flux niche jeu/3D. Les sources
+ * **lourdes / à quota** (France Travail paginé, Adzuna throttlé, Hitmarker & HelloWork = ~100+ pages)
+ * restent dans `collectToutes()` (cron complet espacé, cf. `collecterEtPurger`). Cf. `SOURCES.md`.
+ */
+export async function collectLeger(): Promise<CollectReport[]> {
+  return [
+    await collectAfjv(),
+    await collectGamesCareer(),
+    await collectGameJobsCo(),
+    await collectRemoteOk(),
+    await collectRemoteGameJobs(),
+    await collectAts(),
+  ];
+}
+
+/**
  * Orchestration complète : collecte **toutes** les sources puis **purge** les offres périmées.
  * Garde-fou : on ne purge **que si au moins une source a réussi** (sinon une panne réseau globale
  * — toutes les sources en échec → aucun `recupere_le` rafraîchi — viderait la base). Cf. `purge.ts`.
  */
 export async function collecterEtPurger(): Promise<CollectGlobalResult> {
   const rapports = await collectToutes();
+  const auMoinsUnSucces = rapports.some((r) => !r.erreur && r.recuperees > 0);
+  const purgees = auMoinsUnSucces ? await purgeOffresPerimees() : null;
+  return { rapports, purgees };
+}
+
+/** Variante **légère** (sources rapides uniquement) + purge. Pour le cron fréquent (≈20 min). */
+export async function collecterLegerEtPurger(): Promise<CollectGlobalResult> {
+  const rapports = await collectLeger();
   const auMoinsUnSucces = rapports.some((r) => !r.erreur && r.recuperees > 0);
   const purgees = auMoinsUnSucces ? await purgeOffresPerimees() : null;
   return { rapports, purgees };

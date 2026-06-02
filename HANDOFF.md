@@ -3,16 +3,18 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. Format court et opérationnel.
 
-**Dernière mise à jour** : 2026-06-02 (session : **R&D boards + Hitmarker + PURGE auto** — ADR-0019/0020)
-**Phase en cours** : **Phase 1 (MVP)**. **7 sources vivantes** : **France Travail** (API, ROME) +
-**AFJV** (RSS, jeu vidéo FR) + **Adzuna** (API, ~20 pays) + **Games-Career** (RSS, jeu vidéo EU/EN) +
-**ATS studios** (Greenhouse/Lever/Ashby, 13 studios curés, sans clé) +
-**RemoteGameJobs** (board jeu vidéo remote, fetch+cheerio, 33 offres) +
-**🆕 Hitmarker** (plus gros board gaming/esport mondial — **sitemap + JSON-LD JobPosting, sans Playwright** ;
-sans plancher = filet large, 140 offres/run → 22 cœur/24 connexe/94 cachées).
-**🆕 PURGE AUTO des offres périmées** (ADR-0020) : offre non revue depuis >30 j = morte → supprimée ;
-garde-fou (ne purge que si une source a réussi) ; branchée au cron + `npm run collect`.
-**Base ≈ 2580 offres** (7 sources ; bouge à chaque collecte/purge).
+**Dernière mise à jour** : 2026-06-02 (session : **+3 sources gains-faciles + TEMPS RÉEL (cron)** — ADR-0021/0022)
+**Phase en cours** : **Phase 1 (MVP)**. **10 sources vivantes** : France Travail (API) · AFJV (RSS) ·
+Adzuna (API) · Games-Career (RSS) · ATS studios (GH/Lever/Ashby) · RemoteGameJobs (cheerio) ·
+Hitmarker (sitemap+JSON-LD) · **🆕 GameJobs.co** (Atom) · **🆕 RemoteOK** (API remote) ·
+**🆕 HelloWork** (recherche FR + JSON-LD ; salaire €, ignore les expirées).
+**🔄 TEMPS RÉEL (ADR-0022)** : **cron système 2 vitesses** — léger **20 min** (AFJV, Games-Career,
+GameJobs.co, RemoteOK, RemoteGameJobs, ATS) / complet **2 h** (+ FT, Adzuna, Hitmarker, HelloWork).
+Dashboard = Server Component **dynamique** (lit la DB en direct) → l'offre apparaît dès qu'elle est en base.
+`scripts/cron-collect.sh` (flock anti-chevauchement, log `collect.log`). Démon `cron` actif.
+**PURGE AUTO** (ADR-0020) : offre non revue depuis >30 j = supprimée (garde-fou : ≥1 source réussie).
+**Correctif tri** : commerce de détail jeux vidéo (vendeur/librairie) ajouté à `BRUIT_DUR` (caché).
+**Base ≈ 2900 offres** (10 sources ; bouge à chaque collecte/purge).
 **Pipeline pertinence + enrichissement LIVRÉ** (ADR-0011) ; **plancher de pertinence par source** (ADR-0012).
 **Dashboard LIVRÉ** (ADR-0015). **🆕 TRI EN COUCHES STRICT** (ADR-0016) : signaux structurés d'abord
 (ROME/catégorie Adzuna/famille AFJV/dept ATS), titre juge du cœur, **défaut strict = caché** ; fin du bruit
@@ -25,10 +27,10 @@ Reste à faire : **automatiser la purge des offres périmées** dans le cron ; a
 garder cœur 3D/jeu/VFX/anim + périphérie). **Point ouvert produit** : l'onglet **connexes est volumineux**
 (corporate + ingénierie générique de studios) — à restreindre si la proprio le souhaite.
 
-**✅ État git (reprise propre)** : tout est **commité**, arbre **propre**. Derniers commits sur `master` : `ff03a9d` (ATS) · `388231e` (tri strict) · `48a88f5` (dashboard) +
-**RemoteGameJobs** + **Hitmarker & purge**. Vérifié au vert : `tsc` + `eslint` + **88 tests** (+10).
-**Phase scraping OUVERTE** : `cheerio` installé (parsing HTML léger). **Playwright PAS installé**
-(Hitmarker contourné via sitemap+JSON-LD ; réservé aux Cloudflare/SPA à venir : The Rookies, GameJobs.co…). Commit **local** (pas de remote configuré — pousser si un dépôt distant existe).
+**✅ État git (reprise propre)** : tout est **commité**, arbre **propre**. Derniers commits sur `master`/branche : ATS · tri strict · dashboard · RemoteGameJobs · Hitmarker&purge ·
+**GameJobs.co+RemoteOK+HelloWork + cron temps réel**. Vérifié au vert : `tsc` + `eslint` + **101 tests** (+13).
+**Playwright toujours PAS installé** (tous les boards faits jusqu'ici contournés via flux/API/JSON-LD).
+⚠️ **Le cron tourne désormais en continu** (collecte la base toutes les 20 min / 2 h) — `crontab -l` pour voir. Commit **local** (pas de remote configuré — pousser si un dépôt distant existe).
 **Toutes les clés API sont présentes et fonctionnent.**
 ⚠️ **Purge périmés faite à la main** cette session (DELETE par fenêtre `recupere_le` + studios retirés) —
 **à coder dans le pipeline** (sinon les offres mortes s'accumulent).
@@ -175,18 +177,17 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
 - ~~**1. Connecteur ATS**~~ ✅ **FAIT (ADR-0017)**. — ~~**2. RemoteGameJobs**~~ ✅ **FAIT (ADR-0018)**.
 - ~~**3. Hitmarker**~~ ✅ **FAIT (ADR-0019)** (sitemap+JSON-LD). — ~~**4. Purge auto périmés**~~ ✅ **FAIT (ADR-0020)**.
 
-1. **Gains FACILES restants (R&D faite, cf. `SOURCES.md`)** — pour grossir vite la base :
-   - **API remote JSON propres, sans clé** : Himalayas, Jobicy (`tag=design`), RemoteOK (attribution),
-     Arbeitnow, The Muse (`category=Design and UX`). Généralistes → filtrer par tag + classifieur strict.
-   - **Boards fetch+cheerio faisables** (HTML server-rendered) : **Work With Indies** (~80 offres),
-     **PixelCareer** (3D/anim/VFX) ; **80 Level** = lire le JSON `__NEXT_DATA__` (Next.js, sans navigateur).
-2. **Décision produit : taille de l'onglet connexes** — le restreindre (cacher le corporate de studio) ou
-   le garder large ? Si on resserre : retirer le plancher `connexe` des ATS corporate, ou onglet « industrie ».
-3. **Élargir les studios ATS** : ajouter des slugs à `src/config/studios.ts` (sonder GH/Lever/Ashby avant).
-4. **Boards Cloudflare/SPA → installer Playwright** (gros effort, en dernier) : **The Rookies** (juniors,
-   cible n°1 — mais Cloudflare + pas de sitemap d'offres), GameJobs.co, GrackleHQ, AWN, **ArtStation** (Tier 4).
-5. **Dédup inter-sources** (ouvert, ADR-0013) : une même offre peut être sur Adzuna **et** FT/ATS/board.
-6. **Persister `signaux` (jsonb)** pour **reclasser sans re-fetch** ; **enrichissement AFJV** (fetch détail).
+1. **Gains FACILES restants** (R&D faite, `SOURCES.md`) : autres **API remote** (Himalayas, Jobicy,
+   Arbeitnow, The Muse `category=Design and UX`) ; **boards fetch+cheerio** (**Work With Indies** ~80,
+   **PixelCareer** 3D/anim/VFX) ; **80 Level** = lire le JSON `__NEXT_DATA__` (Next.js, sans navigateur).
+2. **Dédup inter-sources** (ouvert, ADR-0013) : une même offre peut être sur Adzuna **et** FT/ATS/board.
+   ⚠️ Devient plus visible avec 10 sources (HelloWork ∩ FT/Adzuna ; GameJobs.co ∩ Hitmarker/RemoteGameJobs).
+3. **Décision produit : taille de l'onglet connexes** — le restreindre (cacher corporate studio) ou large ?
+4. **Élargir les studios ATS** : ajouter des slugs à `src/config/studios.ts` (sonder GH/Lever/Ashby avant).
+5. **Boards Cloudflare/SPA → installer Playwright** (gros effort, en dernier) : **The Rookies** (juniors,
+   cible n°1 — Cloudflare + pas de sitemap d'offres), GrackleHQ, AWN, **ArtStation** (Tier 4). LinkedIn/Indeed = ⚫/🔴.
+6. **Collecte incrémentale Hitmarker** (via `<lastmod>` du sitemap) pour éviter de re-fetch 150 pages/run.
+7. **Persister `signaux` (jsonb)** pour **reclasser sans re-fetch** ; **enrichissement AFJV** (fetch détail).
 
 ## ⚠️ Pièges / à savoir
 

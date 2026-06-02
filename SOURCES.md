@@ -71,8 +71,10 @@ confirmé comme cible Tier 4 prioritaire (Cloudflare → Playwright+proxies ou s
 ## ⭐ Ordre d'implémentation recommandé (par valeur/effort)
 
 1. ✅ **France Travail** (API) · ✅ **AFJV** (RSS) · ✅ **Games-Career** (RSS) · ✅ **Adzuna** (API) ·
-   ✅ **ATS studios** (Greenhouse/Lever/Ashby) · ✅ **RemoteGameJobs** (scraping léger cheerio) ·
-   ✅ **Hitmarker** (sitemap + JSON-LD JobPosting, sans Playwright) — **faits** (7 sources, ≈2580 offres).
+   ✅ **ATS studios** (Greenhouse/Lever/Ashby) · ✅ **RemoteGameJobs** (cheerio) · ✅ **Hitmarker**
+   (sitemap+JSON-LD) · ✅ **GameJobs.co** (Atom) · ✅ **RemoteOK** (API) · ✅ **HelloWork** (recherche
+   FR + JSON-LD, salaire €/expiration) — **faits** (**10 sources**, ≈2900 offres).
+   **🔄 Fraîcheur** : cron système 2 vitesses (léger 20 min / complet 2 h) → site quasi temps réel (ADR-0022).
 2. ⭐ **Connecteur générique ATS** 🟢 (sans clé, ~100 % pertinent) : **6 plateformes** (Greenhouse, Lever,
    Ashby, Workable, Recruitee, Personio) pilotées par `src/config/studios.ts`. **Prochaine grosse étape** —
    meilleur ratio valeur/risque/effort de tout le projet.
@@ -156,7 +158,7 @@ Génériques (filtrage niche nécessaire, par tag/mot-clé à la source + classi
 | Source | Accès | Périmètre | Notes |
 |---|---|---|---|
 | **Welcome to the Jungle** | 🟡 backend **Algolia** | FR + tech/startups | Index Algolia interrogeable (search_jobs, salaire, contrat). Studios/tech présents. Pas d'API « officielle » publique → à manier proprement. |
-| **HelloWork** | 🟠 pas d'API de consommation | FR généraliste | Le flux JSON HelloWork est réservé aux **recruteurs** diffusant *leurs* offres ; pour nous → **scraping** HTML (offres publiques). |
+| **HelloWork** | 🟠→✅ **JSON-LD** | FR généraliste | ✅ **Fait (ADR-0021)** : recherche FR server-rendered (sans Cloudflare) → **JSON-LD JobPosting** par offre (salaire €, `validThrough` → expirées ignorées). Pas de plancher (tri strict). |
 | **GamesIndustry.biz / PocketGamer.biz** | 🟡 sections jobs, RSS probable | Industrie jeu | À vérifier au branchement. |
 
 ## Tier 3 — Boards niche à scraper (posture agressive, cœur du « Joker »)
@@ -169,8 +171,10 @@ Pas d'API publique → navigateur automatisé (Playwright). Offres **publiques d
 - **GrackleHQ** (gracklehq.com) 🟠 — **agrégateur jeu vidéo, 4000+ offres live** ; structure simple → bon candidat scraping/feed.
 - **Remote Game Jobs** (remotegamejobs.com) 🟠 — ✅ **Fait (ADR-0018)** : `src/sources/remote-game-jobs/`,
   HTML server-rendered → **fetch + cheerio** (pas de Playwright). 33 offres, plancher `connexe`, mode remote.
-- **GameJobs.co** 🟠 — game dev remote. **SPA Next.js** (`__NEXT_DATA__`) → données dans le JSON embarqué
-  ou Playwright. À coder après les boards HTML simples.
+- **GameJobs.co** 🟢 — ✅ **Fait (ADR-0021)** : **flux Atom** `/?format=atom` (100 entrées, titre « Rôle at
+  Studio »). Board curé game dev → plancher `connexe`. (La page HTML est une SPA, mais l'Atom suffit.)
+- **RemoteOK** 🟢 — ✅ **Fait (ADR-0021)** : API JSON `/api?tags=design` (attribution honorée). Généraliste
+  remote → pas de plancher. Densité 3D faible mais ajoute du volume créatif international.
 - **GameJobs.com** 🟠 — industrie jeu (à distinguer de GameJobs.co).
 - **Games Jobs Direct** 🟠 — UK/USA/Canada/Australie.
 - **80 Level Talent** (80.lv) 🟠 — art/tech jeu, qualitatif.

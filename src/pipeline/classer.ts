@@ -85,9 +85,12 @@ const BRUIT_DUR = compiler([
   // finance / gestion / administratif
   "comptable", "comptabilite", "fiscaliste", "actuaire", "gestion de patrimoine",
   "gestionnaire de paie", "controleur de gestion", "auditeur financier",
-  // commerce / vente (≠ vente en boutique de jeu, qui n'arrive pas via ces sources)
+  // commerce / vente / distribution (HelloWork fait remonter du **commerce de détail** de jeux
+  // vidéo : « Vendeur Jeux Vidéo », « Assistant Librairie Jeux Vidéo » → PAS de la création 3D/jeu).
   "commercial lead", "responsable commercial", "directeur commercial",
   "attache commercial", "technico-commercial", "business developer", "chef de secteur",
+  "vendeur", "vendeuse", "libraire", "librairie", "caissier", "caissiere",
+  "employe de rayon", "hote de caisse", "hotesse de caisse",
   // santé / paramédical (FT mal-taxonomise ; « Unity » est aussi une marque d'appareil de radiothérapie !)
   "cadre de sante", "soins", "paramedical", "infirmier", "infirmiere", "aide-soignant",
   "linac", "radiotherapy", "radiotherapie", "radiology",
