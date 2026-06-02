@@ -3,10 +3,11 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. Format court et opérationnel.
 
-**Dernière mise à jour** : 2026-06-02 (session : **TRI STRICT + connecteur ATS** — ADR-0016/0017)
-**Phase en cours** : **Phase 1 (MVP)**. **5 sources vivantes** : **France Travail** (API, ROME) +
+**Dernière mise à jour** : 2026-06-02 (session : **1er board scrapé — RemoteGameJobs** — ADR-0018)
+**Phase en cours** : **Phase 1 (MVP)**. **6 sources vivantes** : **France Travail** (API, ROME) +
 **AFJV** (RSS, jeu vidéo FR) + **Adzuna** (API, ~20 pays) + **Games-Career** (RSS, jeu vidéo EU/EN) +
-**ATS studios** (Greenhouse/Lever/Ashby, 13 studios curés, sans clé).
+**ATS studios** (Greenhouse/Lever/Ashby, 13 studios curés, sans clé) +
+**🆕 RemoteGameJobs** (board jeu vidéo remote, **scraping léger fetch+cheerio**, 33 offres → 17 cœur/16 connexe).
 **Pipeline pertinence + enrichissement LIVRÉ** (ADR-0011) ; **plancher de pertinence par source** (ADR-0012).
 **Dashboard LIVRÉ** (ADR-0015). **🆕 TRI EN COUCHES STRICT** (ADR-0016) : signaux structurés d'abord
 (ROME/catégorie Adzuna/famille AFJV/dept ATS), titre juge du cœur, **défaut strict = caché** ; fin du bruit
@@ -20,8 +21,10 @@ garder cœur 3D/jeu/VFX/anim + périphérie). **Point ouvert produit** : l'ongle
 (corporate + ingénierie générique de studios) — à restreindre si la proprio le souhaite.
 
 **✅ État git (reprise propre)** : tout est **commité**, arbre **propre**. Derniers commits sur `master` :
-`ff03a9d` (connecteur ATS) · `388231e` (tri strict en couches) · `48a88f5` (dashboard MVP). Vérifié au vert :
-`tsc` + `eslint` + **71 tests**. Commit **local** (pas de remote configuré — pousser si un dépôt distant existe).
+`ff03a9d` (connecteur ATS) · `388231e` (tri strict en couches) · `48a88f5` (dashboard MVP) + **commit RemoteGameJobs**.
+Vérifié au vert : `tsc` + `eslint` + **78 tests** (+7).
+**🆕 Phase scraping OUVERTE** : `cheerio` installé (parsing HTML léger ; **Playwright** réservé aux boards
+SPA/anti-bot à venir). 1er board scrapé = RemoteGameJobs (HTML server-rendered → fetch+cheerio suffit). Commit **local** (pas de remote configuré — pousser si un dépôt distant existe).
 **Toutes les clés API sont présentes et fonctionnent.**
 ⚠️ **Purge périmés faite à la main** cette session (DELETE par fenêtre `recupere_le` + studios retirés) —
 **à coder dans le pipeline** (sinon les offres mortes s'accumulent).
@@ -179,8 +182,10 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
    AAA sur **Workday** (Ubisoft, EA…) = hors périmètre actuel → adaptateur Workday plus tard.
 4. **Persister `signaux` (jsonb)** si l'on veut **reclasser sans re-fetch** (itérer le tri vite). Pour
    l'instant `Offre.signaux` est transient (le tri tourne avant l'upsert) → OK, mais reclassement = recollecte.
-5. **Scraping boards niche** (gros volume, cœur du « Joker ») : installer **Playwright**, attaquer
-   **Hitmarker** / **GameJobs.co** / **The Rookies** (juniors), **3DVF** (VFX/anim FR). **ArtStation = Cloudflare → en dernier**.
+5. **Scraping boards niche** (gros volume, cœur du « Joker ») — **PHASE OUVERTE** (cheerio prêt). ✅ RemoteGameJobs fait.
+   Prochains : **Hitmarker**, **GameJobs.co** (SPA Next.js → JSON embarqué ou Playwright), **The Rookies** (juniors),
+   **3DVF** (VFX/anim FR — flux RSS catégorie vide ce jour, viser le HTML). **ArtStation = Cloudflare → en dernier**.
+   Installer **Playwright** seulement quand un board exige un vrai navigateur (SPA/anti-bot).
 6. **Dédup inter-sources** (ouvert, ADR-0013) : une même offre peut être sur Adzuna **et** FT/ATS/board.
 7. **Enrichissement AFJV** : description RSS courte → fetch optionnel de la page de détail (cf. ADR-0012).
 

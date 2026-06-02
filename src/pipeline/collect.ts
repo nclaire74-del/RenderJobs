@@ -24,6 +24,10 @@ import {
   fetchOffres as fetchAts,
   normalize as normalizeAts,
 } from "@/sources/ats";
+import {
+  fetchOffres as fetchRemoteGameJobs,
+  normalize as normalizeRemoteGameJobs,
+} from "@/sources/remote-game-jobs";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
@@ -130,6 +134,26 @@ export async function collectAts(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte RemoteGameJobs (board jeu vidéo 100 % remote, scraping léger) et enregistre. */
+export async function collectRemoteGameJobs(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchRemoteGameJobs();
+    // Board curé 100 % jeu vidéo → plancher `connexe` (jamais rejeté par le tri générique).
+    const offres: Offre[] = bruts
+      .map(normalizeRemoteGameJobs)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "remote-game-jobs", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return {
+      source: "remote-game-jobs",
+      recuperees: 0,
+      ecrites: 0,
+      erreur: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -138,5 +162,6 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collectAdzuna(),
     await collectGamesCareer(),
     await collectAts(),
+    await collectRemoteGameJobs(),
   ];
 }

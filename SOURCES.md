@@ -46,7 +46,8 @@ confirmé comme cible Tier 4 prioritaire (Cloudflare → Playwright+proxies ou s
 
 ## ⭐ Ordre d'implémentation recommandé (par valeur/effort)
 
-1. ✅ **France Travail** (API) · ✅ **AFJV** (RSS) · ✅ **Games-Career** (RSS) · ✅ **Adzuna** (API) — **faits**.
+1. ✅ **France Travail** (API) · ✅ **AFJV** (RSS) · ✅ **Games-Career** (RSS) · ✅ **Adzuna** (API) ·
+   ✅ **ATS studios** (Greenhouse/Lever/Ashby) · ✅ **RemoteGameJobs** (scraping léger cheerio) — **faits**.
 2. ⭐ **Connecteur générique ATS** 🟢 (sans clé, ~100 % pertinent) : **6 plateformes** (Greenhouse, Lever,
    Ashby, Workable, Recruitee, Personio) pilotées par `src/config/studios.ts`. **Prochaine grosse étape** —
    meilleur ratio valeur/risque/effort de tout le projet.
@@ -140,7 +141,10 @@ Pas d'API publique → navigateur automatisé (Playwright). Offres **publiques d
 **Jeu vidéo / esport :**
 - **Hitmarker** (hitmarker.net) 🟠 — **plus gros board gaming/esport mondial**, milliers d'offres/mois. Priorité scraping.
 - **GrackleHQ** (gracklehq.com) 🟠 — **agrégateur jeu vidéo, 4000+ offres live** ; structure simple → bon candidat scraping/feed.
-- **GameJobs.co** 🟠 + **Remote Game Jobs** (remotegamejobs.com) 🟠 — game dev, fort en remote.
+- **Remote Game Jobs** (remotegamejobs.com) 🟠 — ✅ **Fait (ADR-0018)** : `src/sources/remote-game-jobs/`,
+  HTML server-rendered → **fetch + cheerio** (pas de Playwright). 33 offres, plancher `connexe`, mode remote.
+- **GameJobs.co** 🟠 — game dev remote. **SPA Next.js** (`__NEXT_DATA__`) → données dans le JSON embarqué
+  ou Playwright. À coder après les boards HTML simples.
 - **GameJobs.com** 🟠 — industrie jeu (à distinguer de GameJobs.co).
 - **Games Jobs Direct** 🟠 — UK/USA/Canada/Australie.
 - **80 Level Talent** (80.lv) 🟠 — art/tech jeu, qualitatif.

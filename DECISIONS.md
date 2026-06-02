@@ -379,3 +379,35 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   studios) — décision produit possible : le restreindre ; (b) ajouter d'autres ATS (Workable/Recruitee/
   Personio = AAA sur Workday hors périmètre) et plus de studios ; (c) **dédup inter-sources** (un poste
   studio peut aussi être sur Adzuna) toujours non gérée ; (d) automatiser la **purge des offres périmées**.
+
+## ADR-0018 — Connecteur RemoteGameJobs (scraping léger fetch+cheerio) : 1er board Tier 3
+- **Date** : 2026-06-02.
+- **Contexte** : la proprio constate l'absence des « gros » boards (HelloWork, Indeed, LinkedIn,
+  ArtStation, GameRemote, 80 Level). Tous nécessitent du **scraping** (pas d'API/RSS), avec des
+  niveaux de risque très différents. Décision produit (proprio, ce jour) : **commencer par les
+  boards niche jeu/3D** (vrai gisement, faisables proprement), avant les hostiles (ArtStation/Indeed
+  = anti-bot ; LinkedIn = ⚫ ligne rouge RGPD → jamais en auto). Premier ouvre la **phase scraping**.
+- **R&D accès** (sondage réel) : la plupart des boards niche n'ont **ni RSS ni JSON** exploitable
+  (3DVF a un flux mais la catégorie « offres-emploi » est vide ; 80.lv `/feed/` = articles, pas jobs ;
+  GameJobs.co = SPA Next.js). **RemoteGameJobs** rend en revanche ses **33 offres directement dans le
+  HTML** (app Rails server-rendered, classes Bulma) → **`fetch` + cheerio suffit, pas de Playwright**.
+- **Décisions** (lead dev) :
+  1. **Connecteur `src/sources/remote-game-jobs/`** au contrat habituel : `fetchOffres()` →
+     `parseListe(html)` (cheerio, **testable hors-réseau**) → `normalize()` → `Offre`. Nouvelle dép.
+     **`cheerio`** (parsing HTML léger ; Playwright réservé aux boards SPA/anti-bot à venir).
+  2. **Extraction** par offre : titre (`strong.f-20`), studio (`small.f-15`), lieu (icône `fa-map-pin`),
+     contrat (icône `fa-file-signature` → `mapContrat`), tags compétences (`span.tag.is-warning`).
+     Les **tags** (C++, Unity, Maya, 3D Art… — multiples et hétérogènes, **pas** une famille métier
+     propre) sont **injectés dans la description** pour nourrir l'enrichissement (logiciels), **pas**
+     passés comme signal `familleMetier`. `modeTravail` = **`remote`** (board 100 % remote).
+  3. **Board curé 100 % jeu vidéo → plancher `connexe`** (comme AFJV/Games-Career) : jamais rejeté ;
+     le **cœur reste piloté par le titre** (philosophie `classer.ts`). `sourceId` = slug d'URL.
+- **Raison** : ouvrir la phase scraping par le ratio valeur/risque/effort le plus favorable (cheerio,
+  HTML stable, offres 100 % jeu), sans infra lourde.
+- **Conséquence** : `tsc` + `eslint` + **78 tests** verts (+7). Collecte réelle : **33 offres** →
+  **17 coeur / 16 connexe / 0 hors_scope** (tri par titre OK : Producer/Support/Backend → connexe).
+  **Points ouverts** : (a) quelques rôles d'animation (« Technical Animator », « Animation Lead »)
+  en connexe alors que légitimement cœur → réglage **classifieur** (bare « animator » non promu car
+  « animateur » FR ambigu) ; (b) pas de pagination serveur (33 = liste courante) ; (c) description =
+  liste courte → fetch optionnel de la page de détail plus tard ; (d) **dédup inter-sources** toujours
+  ouverte. **Prochains boards** : Hitmarker, GameJobs.co (SPA → Playwright), The Rookies, 3DVF.
