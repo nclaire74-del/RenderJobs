@@ -162,26 +162,27 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
 - PostgreSQL installé + base/rôle créés + `.env.local` rempli et testé.
 - Docs : `CLAUDE.md`, `DECISIONS.md`, `SOURCES.md` (carte des sources R&D), `README.md`.
 
-## ▶️ Prochaines actions (dans l'ordre — RÉORDONNÉ après dashboard livré)
+## ▶️ Prochaines actions (dans l'ordre — RÉORDONNÉ après tri strict + ATS)
 
-0. **Corriger les faux positifs de classification** (rapide, fort impact sur la confiance du flux cœur) :
-   `src/pipeline/enrichir.ts` détecte « Substance » (logiciel Adobe) dans « **Substance** Use Counselor »,
-   et des spécialités vfx/animation sur des rôles non-artistiques. Pistes : frontières de mots plus strictes,
-   exiger un contexte, ou ancrer le signal `coeur` sur le **titre** plutôt que le boilerplate de description.
-   Couvrir par des tests (`tests/pipeline/`). ~~Dashboard~~ ✅ **FAIT (ADR-0015)**.
-1. **Connecteur générique ATS** (🟢 sans clé, ~100 % pertinent — **gros déblocage R&D ADR-0014**) :
-   Greenhouse/Lever/Ashby exposent les offres par studio. Bâtir 1 connecteur générique + `src/config/studios.ts`.
-   **Liste-amorce de ~24 studios VÉRIFIÉE en réel (2026-06-02)** dans `SOURCES.md` Tier 1bis (Roblox 252,
-   Scopely 202, Riot 185, Epic 124, Rockstar 79, Supercell 46, Voodoo 123, thatgamecompany 25…). Greenhouse
-   `?content=true` = desc riche. Plancher `connexe`. **VFX/anim pas sur ATS → via boards Tier 3.**
-3. **APIs remote gratuites** (secondaire) : Himalayas/Jobicy/RemoteOK (sans auth, EN) — filtrage niche requis.
-4. **Scraping boards niche** (gros volume, cœur du « Joker ») : installer **Playwright**, attaquer
-   **Hitmarker** / **GameJobs.co** / **The Rookies** (juniors). **ArtStation = Cloudflare → en dernier**.
-5. **Élargir le recall FT** : ajouter des `codesRome`/`motsCles` dans `src/config/secteur-actif.ts` —
-   le tri `connexe`/`hors_scope` absorbe le bruit **sans perdre d'offre** (à faire après le dashboard).
-6. **Améliorer l'enrichissement AFJV** : description RSS courte (~80 car.) → fetch optionnel de la page
-   de détail par offre pour de meilleures étiquettes (cf. ADR-0012). (Games-Career ✅ a déjà la desc complète.)
-7. **Dédup inter-sources** (ouvert, ADR-0013) : une même offre peut être sur Adzuna **et** FT/board.
+- ~~**0. Faux positifs de classification**~~ ✅ **FAIT — tri strict en couches (ADR-0016)**.
+- ~~**1. Connecteur générique ATS**~~ ✅ **FAIT (ADR-0017)** : `src/sources/ats/` + `src/config/studios.ts` (13 studios).
+
+1. **Automatiser la PURGE des offres périmées** dans le pipeline (`collect.ts`/cron) : aujourd'hui les
+   offres non rafraîchies par la dernière collecte s'accumulent (fait à la main cette session : DELETE par
+   fenêtre `recupere_le` + studios retirés). Idée : après une collecte **réussie** d'une source, supprimer
+   ses offres dont `recupere_le` < début du run. ⚠️ Tenir compte du plafond FT (1150) et de la pagination
+   Adzuna (page 1 = 50 récentes) pour ne pas purger à tort. **Important pour la « fraîcheur temps réel ».**
+2. **Décision produit : taille de l'onglet connexes** (cf. en-tête) — le restreindre (cacher le corporate
+   de studio) ou le garder large ? Si on resserre : ne pas appliquer le plancher `connexe` aux ATS corporate,
+   ou ajouter un onglet « industrie » distinct.
+3. **Élargir les studios ATS** : ajouter des slugs à `src/config/studios.ts` (sonder GH/Lever/Ashby avant).
+   AAA sur **Workday** (Ubisoft, EA…) = hors périmètre actuel → adaptateur Workday plus tard.
+4. **Persister `signaux` (jsonb)** si l'on veut **reclasser sans re-fetch** (itérer le tri vite). Pour
+   l'instant `Offre.signaux` est transient (le tri tourne avant l'upsert) → OK, mais reclassement = recollecte.
+5. **Scraping boards niche** (gros volume, cœur du « Joker ») : installer **Playwright**, attaquer
+   **Hitmarker** / **GameJobs.co** / **The Rookies** (juniors), **3DVF** (VFX/anim FR). **ArtStation = Cloudflare → en dernier**.
+6. **Dédup inter-sources** (ouvert, ADR-0013) : une même offre peut être sur Adzuna **et** FT/ATS/board.
+7. **Enrichissement AFJV** : description RSS courte → fetch optionnel de la page de détail (cf. ADR-0012).
 
 ## ⚠️ Pièges / à savoir
 
