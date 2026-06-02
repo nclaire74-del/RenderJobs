@@ -3,13 +3,20 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. Format court et opérationnel.
 
-**Dernière mise à jour** : 2026-06-02 (session : 4ᵉ source Games-Career + R&D ATS publics, ADR-0014)
+**Dernière mise à jour** : 2026-06-02 (session : Games-Career + R&D ATS + **recensement sources + checkpoint git**)
 **Phase en cours** : Phase 0 → Phase 1. **4 sources vivantes** : **France Travail** (API, ROME) +
 **AFJV** (RSS, jeu vidéo FR) + **Adzuna** (API, ~20 pays) + **Games-Career** (RSS, jeu vidéo EU/EN).
 **Pipeline pertinence + enrichissement LIVRÉ** (ADR-0011) ; **plancher de pertinence par source** (ADR-0012).
-Base ≈ **1409 offres** (FT 215 / AFJV 89 / Adzuna 1094 / Games-Career 11). Reste à faire : **dashboard**
-(flux cœur + onglet connexes), **connecteur générique ATS** (Greenhouse/Lever/Ashby — gros déblocage R&D,
-cf. `SOURCES.md` Tier 1bis), puis scraping (Hitmarker, The Rookies, ArtStation en dernier).
+Base ≈ **1409 offres** (FT 215 / AFJV 89 / Adzuna 1094 / Games-Career 11 ; compteurs ±, les flux bougent).
+Reste à faire : **dashboard** (flux cœur + onglet connexes), **connecteur générique ATS** (Greenhouse/Lever/
+Ashby — liste-amorce ~24 studios vérifiée, `SOURCES.md` Tier 1bis), puis scraping (Hitmarker, The Rookies, ArtStation).
+
+**✅ État git (reprise propre)** : tout est **commité**, arbre **propre**. Derniers commits sur `master` :
+`12bed44` (recensement sources) · `fc6dc85` (checkpoint : pipeline + 4 connecteurs). Vérifié au vert avant
+checkpoint : `tsc` + `eslint` + **57 tests** + `npm run build`. Commit **local** (pas de remote configuré
+à ma connaissance — pousser si un dépôt distant existe). **Toutes les clés API sont présentes et fonctionnent.**
+**Recensement sources : FAIT** (cf. `SOURCES.md` — liste ATS vérifiée, boards VFX, EURES écarté).
+⚠️ **2 Claude travaillent en parallèle sur ce repo** (coordination via ce HANDOFF + commits).
 **Direction produit actée** (2026-06-02, ADR-0009 + `PRODUIT.md`) : pertinence 3 classes (flux strict +
 onglet connexes), enrichissement non filtrant, **international d'emblée → Adzuna passe AVANT FT**,
 UI FR i18n-ready, **public n°1 = juniors**.
@@ -85,8 +92,8 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
 - **⚠️ Point ouvert (important)** : **dédup inter-sources** non gérée (une offre peut être sur Adzuna **et**
   FT/board ; clé d'unicité actuelle = `source`+`sourceId`). Et **trou de recall** (cf. mémoire
   `recall-trou-collecte-connexe`) : collecte par filtre → patcher au plus vite via le flux Connexe.
-- **🔢 NB checkpoint** : compteurs de l'en-tête à recaler — base réelle après collecte 3 sources = **1357**
-  (FT 215 + AFJV 89 + Adzuna 1053). À réconcilier avec l'ajout games-career de l'autre session.
+- **🔢 Compteurs** : réconciliés dans l'en-tête (4 sources ≈ **1409** après ajout games-career). Les totaux
+  bougent à chaque collecte (les flux évoluent) — ne pas s'attacher au chiffre exact.
 
 ## ✅ Pipeline pertinence + enrichissement (2026-06-02, ADR-0011)
 
