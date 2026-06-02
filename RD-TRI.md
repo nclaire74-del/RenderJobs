@@ -49,6 +49,14 @@ Champs réellement renvoyés par offre (sondés sur `M1831`, `E1205`) :
 **Conclusion FT** : `romeCode` + `appellation` + `domaine de formation` + `experience` sont des
 signaux **directs** qu'on devrait **stocker et utiliser** ; le NAF est à **ignorer** pour le tri.
 
+> ⚠️ **Correction (validée 2026-06-02, ADR-0016)** : le `romeCode` s'est révélé **moins fiable que prévu**
+> comme signal **cœur** — France Travail **mé-taxonomise** (ex. « Cadre de santé » classé sous `L1510`
+> Animateur 3D ; « Consultant SAP » sous un ROME jeu vidéo). → Dans l'implémentation, le ROME ne sert que de
+> **plancher `connexe`** (la source est *du* secteur), et le **cœur est piloté par le titre/skills** (vérité
+> terrain). `appellation`/`domaine de formation`/`experience` restent utiles. Le tableau ci-dessus (verdict 🟢
+> « meilleur signal cœur ») est donc **nuancé** : ROME = bon pour *cibler la collecte* et *plancher connexe*,
+> pas pour *décider le cœur*.
+
 ### 2.2 Adzuna — catégorie grossière
 
 - **Taxonomie `/categories`** : 30 catégories **larges** (`it-jobs`, `creative-design-jobs`,

@@ -11,7 +11,9 @@
 ## 1. La spec (clé en main, confirmée)
 
 - **Endpoint liste/recherche** : `GET https://www.artstation.com/api/v2/jobs/public/jobs.json`
-- **Params (query string)** : `page`, `per_page`, `query` (texte libre). Ex. `?page=1&per_page=50&query=`
+- **Params (query string)** : `page`, **`per_page` (OBLIGATOIRE, min 3)**, `query` (texte libre). Ex.
+  `?page=1&per_page=50&query=` — `per_page` absent → 400 « should be given » ; `per_page=1/2` → 400 « >= 3 ».
+  Vérifié 2026-06-02 : `per_page` 5/50/100 → 200.
 - **Auth** : **AUCUNE**. Pas de CSRF, pas de cookie, pas de challenge sur ce chemin. Confirmé **côté serveur**
   (fetch Python, UA navigateur banal) → **200** + JSON complet. Le segment **`/public/`** est la clé.
 - **Réponse** : `{ "total_count": 90, "data": [ {offre}, … ] }`. Le board entier ≈ **90 offres ouvertes**
