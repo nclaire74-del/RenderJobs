@@ -7,6 +7,7 @@ import type { Offre, Pertinence } from "@/domain/offre";
 import { enrichir } from "./enrichir";
 import { classer } from "./classer";
 import { signatureDedup } from "./dedup";
+import { nomPays } from "@/lib/pays";
 
 /** Rang de pertinence (plus haut = plus pertinent), pour appliquer un plancher par source. */
 const RANG: Record<Pertinence, number> = { hors_scope: 0, connexe: 1, coeur: 2 };
@@ -31,5 +32,7 @@ export function traiter(offre: Offre, opts: TraiterOptions = {}): Offre {
     pertinence = opts.plancher;
   }
   const cleDedup = signatureDedup(enrichie.titre, enrichie.studio);
-  return { ...enrichie, pertinence, cleDedup };
+  // Normalisation **centrale** du pays (libellé FR unique) : garantit un filtre géo cohérent quelle
+  // que soit la source (certains connecteurs émettent « United States »/« FR » bruts). Idempotent.
+  return { ...enrichie, pays: nomPays(enrichie.pays), pertinence, cleDedup };
 }

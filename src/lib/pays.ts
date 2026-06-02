@@ -21,6 +21,17 @@ const NOM_PAYS: Record<string, string> = {
   pl: "Pologne", poland: "Pologne", jp: "Japon", japan: "Japon",
   cn: "Chine", china: "Chine", au: "Australie", australia: "Australie",
   in: "Inde", india: "Inde",
+  no: "Norvège", norway: "Norvège", dk: "Danemark", denmark: "Danemark",
+  nz: "Nouvelle-Zélande", "new zealand": "Nouvelle-Zélande",
+  cz: "Tchéquie", czechia: "Tchéquie", "czech republic": "Tchéquie",
+  at: "Autriche", austria: "Autriche", ro: "Roumanie", romania: "Roumanie",
+  bg: "Bulgarie", bulgaria: "Bulgarie", ua: "Ukraine", ukraine: "Ukraine",
+  tr: "Turquie", turkey: "Turquie", gr: "Grèce", greece: "Grèce",
+  hu: "Hongrie", hungary: "Hongrie", lt: "Lituanie", lithuania: "Lituanie",
+  ar: "Argentine", argentina: "Argentine", uy: "Uruguay", uruguay: "Uruguay",
+  br: "Brésil", brazil: "Brésil", mx: "Mexique", mexico: "Mexique",
+  kr: "Corée du Sud", "south korea": "Corée du Sud", korea: "Corée du Sud",
+  id: "Indonésie", indonesia: "Indonésie", my: "Malaisie", malaysia: "Malaisie",
 };
 
 /** Code pays ISO-2 ou libellé → nom lisible (FR). Best-effort, sinon renvoie l'entrée trimée. */
