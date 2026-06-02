@@ -120,6 +120,10 @@ const COEUR_TITRE = compiler([
   "engine programmer", "graphics programmer", "rendering engineer", "game programmer",
   "game developer", "unreal developer", "unity developer", "shader artist",
   "lookdev artist", "look dev artist", "directeur artistique jeu", "3d generalist artist",
+  // rôles craft fréquents en ATS de studio (souvent sous un département = nom de produit)
+  "lead artist", "art lead", "lead animator", "lead game designer", "network programmer",
+  "tools programmer", "tools engineer", "graphics engineer", "rendering programmer",
+  "ai programmer", "gameplay engineer", "engine developer", "audio designer", "sound designer",
 ]);
 
 /**
@@ -152,11 +156,12 @@ const FAMILLE_COEUR = compiler([
  * (appliqué par le connecteur ATS). Mapping par mots-clés (libellés non standardisés entre studios).
  */
 const DEPT_CRAFT = compiler([
-  "engineer", "engineering", "software", "developer", "programming", "programmer", "code",
-  "tools", "art", "animation", "design", "gameplay", "level", "vfx", "fx", "audio", "sound",
-  "graphics", "render", "ui", "ux", "technical art", "production", "qa", "quality",
-  "narrative", "writer", "cinematic", "3d", "data science", "machine learning",
-  "online services", "core tech",
+  // Craft **jeu/3D** ciblé : on EXCLUT les départements génériques « Engineering »/« Software »
+  // (sinon tout ingénieur backend/infra d'un studio passe en cœur). Les rôles tech-craft clairs
+  // (« graphics engineer », « gameplay engineer », « tools programmer »…) sont captés par le titre.
+  "programming", "programmer", "gameplay", "tools", "graphics", "render", "rendering", "engine",
+  "art", "animation", "design", "level", "vfx", "fx", "audio", "sound",
+  "technical art", "qa", "quality assurance", "narrative", "writer", "cinematic", "3d",
 ]);
 
 /**

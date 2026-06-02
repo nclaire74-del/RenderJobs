@@ -349,3 +349,33 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   **Points ouverts** : automatiser la purge dans le cron ; persister `signaux` (jsonb) si l'on veut reclasser
   sans re-fetch ; quelques ambigus industriels volontairement cachés en strict (simulateur de vol, 3D auto,
   « dév. 3D temps réel » pour la simulation) — rééquilibrable si la proprio le souhaite.
+
+## ADR-0017 — Connecteur générique ATS (Greenhouse/Lever/Ashby) piloté par liste de studios
+
+- **Date** : 2026-06-02
+- **Contexte** : base trop pauvre côté **offres directes de studios**. R&D (ADR-0014, `RD-TRI.md` §5bis) :
+  les ATS publics (sans clé) sont le **meilleur levier cœur** du projet (~100 % industrie du jeu).
+- **Décisions** (lead dev) :
+  1. **Connecteur unique générique** `src/sources/ats/` avec un **adaptateur par plateforme**
+     (Greenhouse `boards-api`, Lever `v0/postings`, Ashby `posting-api`), un format intermédiaire
+     `OffreAts` puis un `normalize()` commun. Schémas **Zod** + `safeParse` par item, résilient
+     (un studio en échec est journalisé et ignoré). HTML décodé+nettoyé (Greenhouse `content`).
+  2. **Liste curée** `src/config/studios.ts` (`slug` + `ats` + `nom`), **mappings vérifiés en réel**
+     (sondage des 3 endpoints). 13 studios : Riot, Roblox, Epic, Scopely, Rockstar, Naughty Dog
+     (Greenhouse) ; Voodoo, Kabam, Avalanche, Jam City (Lever) ; Supercell, thatgamecompany,
+     Second Dinner (Ashby). **Discord écarté** (plateforme SaaS, pas un studio).
+  3. **Signal de tri = département/équipe** (`signaux.departement`) : un studio = 100 % industrie du
+     jeu mais PAS 100 % craft (corporate Finance/Legal/People). **Plancher `connexe`** par studio connu
+     (jamais perdu) ; **`DEPT_CRAFT` ciblé jeu** (gameplay, art, animation, design, audio, graphics,
+     render, tools, programming, vfx, narrative…) → `coeur`. **« Engineering »/« Software » génériques
+     volontairement EXCLUS** du craft (sinon tout ingénieur backend/infra passe en cœur sur un board
+     3D/jeu) ; les rôles tech-craft clairs (« graphics engineer », « gameplay programmer », « tools
+     programmer »…) restent captés par le **titre**.
+- **Raison** : remplir le flux cœur d'offres studios à haute pertinence, sans clé ni scraping, avec un
+  tri quasi déterministe par département (fidèle à `RD-TRI.md`).
+- **Conséquence** : `tsc` + `eslint` + **71 tests** verts. Collecte réelle : **+998 offres ATS** →
+  **coeur 413** (craft jeu pur), **connexe 1165**, **hors_scope 830** ; **base totale 2408** (vs 1409, +71 %).
+  **Points ouverts** : (a) l'onglet **connexes est volumineux** (corporate + ingénierie générique de
+  studios) — décision produit possible : le restreindre ; (b) ajouter d'autres ATS (Workable/Recruitee/
+  Personio = AAA sur Workday hors périmètre) et plus de studios ; (c) **dédup inter-sources** (un poste
+  studio peut aussi être sur Adzuna) toujours non gérée ; (d) automatiser la **purge des offres périmées**.

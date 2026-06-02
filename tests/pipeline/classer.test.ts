@@ -47,8 +47,10 @@ describe("classer / cœur — signaux structurés de la source", () => {
   it("famille AFJV craft → coeur", () => {
     expect(classerComplet("Offre studio", "", { familleMetier: "Programmation" })).toBe("coeur");
   });
-  it("département ATS craft → coeur", () => {
-    expect(classerComplet("Software Engineer", "", { departement: "Software Engineering" })).toBe("coeur");
+  it("département ATS craft jeu → coeur (mais pas un dept générique « Engineering »)", () => {
+    expect(classerComplet("Producer", "", { departement: "Gameplay Programming" })).toBe("coeur");
+    // Dept générique « Engineering » + titre non-craft → PAS cœur (évite tout ingénieur backend).
+    expect(classerComplet("Software Engineer", "", { departement: "Engineering" })).toBe("hors_scope");
   });
 });
 

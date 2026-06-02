@@ -20,6 +20,10 @@ import {
   fetchOffres as fetchGamesCareer,
   normalize as normalizeGamesCareer,
 } from "@/sources/games-career";
+import {
+  fetchOffres as fetchAts,
+  normalize as normalizeAts,
+} from "@/sources/ats";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
@@ -105,6 +109,27 @@ export async function collectGamesCareer(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte ATS (offres directes des studios via Greenhouse/Lever/Ashby) et enregistre. */
+export async function collectAts(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchAts();
+    // Studios curés (100 % industrie du jeu) → plancher `connexe` ; le classifieur promeut les
+    // départements « craft » en `coeur` (cf. RD-TRI.md §5bis). Studio connu = jamais perdu.
+    const offres: Offre[] = bruts
+      .map(normalizeAts)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "ats", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return {
+      source: "ats",
+      recuperees: 0,
+      ecrites: 0,
+      erreur: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -112,5 +137,6 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collectAfjv(),
     await collectAdzuna(),
     await collectGamesCareer(),
+    await collectAts(),
   ];
 }
