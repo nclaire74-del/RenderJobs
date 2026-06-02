@@ -155,12 +155,63 @@ const SPECIALITES: Entree[] = [
   { canon: "animation", motifs: ["animation", "animateur", "animator", "animation 3d"] },
   { canon: "motion-design", motifs: ["motion design", "motion designer", "motion graphics", "motion graphic"] },
   { canon: "concept-art", motifs: ["concept art", "concept artist", "concept designer"] },
-  { canon: "game-design", motifs: ["game design", "game designer", "level design", "gameplay"] },
+  {
+    canon: "game-design",
+    motifs: ["game design", "game designer", "level design", "level designer", "gameplay", "systems designer", "combat designer"],
+  },
   { canon: "storyboard", motifs: ["storyboard", "story-board", "story board"] },
   { canon: "matte-painting", motifs: ["matte painting", "matte painter"] },
   { canon: "previz", motifs: ["previz", "pre-visualisation", "previsualisation"] },
   { canon: "rotoscopie", motifs: ["rotoscopie", "rotoscoping", "roto"] },
   { canon: "archviz", motifs: ["archviz", "architectural visualization", "visualisation architecturale"] },
+  // --- Spécialités ajoutées (R&D 2026-06 : ~30 % des offres sortaient sans étiquette) ---
+  // Annotations seulement (le classifieur n'utilise PAS `specialites`), motifs volontairement
+  // précis (rôles, pas mots génériques) pour garder le filtre net.
+  {
+    canon: "generaliste-3d",
+    motifs: ["3d artist", "artiste 3d", "3d generalist", "generaliste 3d", "cg artist", "cgi artist"],
+  },
+  {
+    canon: "technical-art",
+    motifs: ["technical artist", "tech artist", "technical art director", "technical animator", "td artist"],
+  },
+  {
+    canon: "programmation",
+    motifs: [
+      "programmeur", "programmer", "gameplay programmer", "engine programmer", "graphics programmer",
+      "tools programmer", "network programmer", "game programmer", "ai programmer", "rendering programmer",
+      "software engineer", "ingenieur logiciel", "rendering engineer", "engine developer", "gameplay engineer",
+      "developpeur gameplay", "developpeur jeu",
+    ],
+  },
+  {
+    canon: "ui-ux",
+    motifs: ["ui designer", "ux designer", "ui artist", "ui/ux", "ux/ui", "user interface", "user experience", "ux researcher"],
+  },
+  {
+    canon: "audio",
+    motifs: ["sound designer", "sound design", "audio designer", "audio programmer", "audio director", "sound engineer", "ingenieur du son", "concepteur sonore", "music composer", "game composer"],
+  },
+  {
+    canon: "qa",
+    motifs: ["qa", "quality assurance", "assurance qualite", "testeur", "test engineer", "qa engineer", "qa analyst"],
+  },
+  {
+    canon: "narration",
+    motifs: ["narrative designer", "narrative design", "narrative director", "scenariste", "game writer", "lead writer", "ecriture de scenario"],
+  },
+  {
+    canon: "production",
+    motifs: ["producer", "producteur", "productrice", "production manager", "line producer", "associate producer", "executive producer", "chef de projet"],
+  },
+  {
+    canon: "graphisme",
+    motifs: ["graphiste", "infographiste", "graphic designer", "designer graphique"],
+  },
+  {
+    canon: "illustration",
+    motifs: ["illustrateur", "illustratrice", "illustrator", "illustration"],
+  },
 ];
 
 // ---------------------------------------------------------------------------

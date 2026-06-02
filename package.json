@@ -8,6 +8,7 @@
     "build": "next build",
     "lint": "eslint",
     "collect": "tsx --env-file=.env.local scripts/collect.ts",
+    "reenrichir": "tsx --env-file=.env.local scripts/reenrichir.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",

@@ -69,6 +69,22 @@ describe("enrichir / spécialités, niveau, mode, langue", () => {
     const o = enrichir(offre("Rigging Artist", "You will do rigging and character setup."));
     expect(o.specialites).toEqual(expect.arrayContaining(["rigging", "character"]));
   });
+  it("détecte les spécialités ajoutées sur le titre (ex-angles morts)", () => {
+    expect(enrichir(offre("Technical Artist H/F")).specialites).toContain("technical-art");
+    expect(enrichir(offre("Senior Engine Programmer")).specialites).toContain("programmation");
+    expect(enrichir(offre("Producer")).specialites).toContain("production");
+    expect(enrichir(offre("Lead Writer (m/f/d)")).specialites).toContain("narration");
+    expect(enrichir(offre("Infographiste (H/F)")).specialites).toContain("graphisme");
+    expect(enrichir(offre("Junior UI Designer")).specialites).toContain("ui-ux");
+    expect(enrichir(offre("Sound Designer")).specialites).toContain("audio");
+    expect(enrichir(offre("3D Artist")).specialites).toContain("generaliste-3d");
+  });
+  it("matche la forme agent « level designer » (et pas seulement « level design »)", () => {
+    expect(enrichir(offre("CDI Level Designer Projet Narratif")).specialites).toContain("game-design");
+  });
+  it("ne tague pas « ux » dans un mot quelconque (frontières)", () => {
+    expect(enrichir(offre("De nombreux travaux graphiques")).specialites).not.toContain("ui-ux");
+  });
   it("déduit le niveau avec priorité lead > senior > junior", () => {
     expect(enrichir(offre("Lead Animator", "senior team")).experience).toBe("lead");
     expect(enrichir(offre("Senior FX", "")).experience).toBe("senior");

@@ -106,6 +106,16 @@ const SPECIALITES_FR: Record<string, string> = {
   previz: "Prévisualisation",
   rotoscopie: "Rotoscopie",
   archviz: "Archviz",
+  "generaliste-3d": "Généraliste 3D",
+  "technical-art": "Technical art",
+  programmation: "Programmation",
+  "ui-ux": "UI / UX",
+  audio: "Audio / son",
+  qa: "QA / test",
+  narration: "Narration / écriture",
+  production: "Production",
+  graphisme: "Graphisme",
+  illustration: "Illustration",
 };
 export const libelleSpecialite = (s: string): string => SPECIALITES_FR[s] ?? s;
 
