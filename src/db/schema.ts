@@ -69,6 +69,10 @@ export const offres = pgTable(
     index("offres_pertinence_publie_le_idx").on(t.pertinence, t.publieLe),
     // Déduplication inter-sources à la lecture (regroupement par signature).
     index("offres_cle_dedup_idx").on(t.cleDedup),
+    // Filtres/facettes différenciants sur tableaux : containment `@>` + `unnest` → index GIN
+    // (sinon scan séquentiel, dégrade à fort volume — AUDIT §C/§H).
+    index("offres_logiciels_gin").using("gin", t.logiciels),
+    index("offres_specialites_gin").using("gin", t.specialites),
   ],
 );
 
