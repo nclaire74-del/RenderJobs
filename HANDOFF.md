@@ -54,6 +54,10 @@ Liste à jour = `.env.example`.
 2. ✅ **FAIT (2026-06-02)** : **filtres différenciants** dans le dashboard — **logiciel** / **spécialité** / **mode de travail**
    (le niveau existait déjà). Selects peuplés par facettes (`listerLogiciels`/`listerSpecialites`, `unnest`+comptage, triés par
    fréquence). Containment `text[] @>` côté repo, params portés dans l'URL (partageable). Spécialités libellées FR. Commit `0af4a6a`.
+   ✅ **+ enrichissement (commit `ebc1075`)** : +10 spécialités (programmation, technical-art, ui-ux, audio, qa, narration,
+   production, graphisme, illustration, generaliste-3d) + fix « level designer ». Offres sans étiquette **678 → 382**.
+   Nouveau script **`npm run reenrichir [-- --apply]`** (dry-run par défaut) à relancer à **chaque évolution du lexique**
+   `enrichir.ts` pour ré-étiqueter les offres déjà en base. ⚠️ `classer.ts` n'utilise PAS `specialites` (ajouts sûrs, pas de reclassement).
    → **Reste possible** : étiquettes cliquables (clic sur un tag = applique le filtre) ; recherche `q` en plein-texte natif Postgres
    (actuellement `ILIKE`) ; facettes dépendantes des filtres courants (aujourd'hui elles ne dépendent que de la vue).
 3. **Dédup affinée par lieu** (éviter de sur-fusionner des postes distincts d'un même studio au même titre).
