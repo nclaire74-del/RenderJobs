@@ -30,3 +30,16 @@ sudo systemctl restart clara-hub
 > étant dynamique (lecture DB à chaque requête), les nouvelles offres apparaissent sans redéploiement.
 
 Site : **http://192.168.1.175:3002** (LAN).
+
+## Alertes « source cassée » (surveillance)
+
+À chaque collecte, la santé des sources est vérifiée (échec, ou 0 offre alors qu'il y en avait
+→ connecteur cassé). Les alertes sont **journalisées** dans `collect.log` (chercher `⚠️`).
+
+**Notification push (optionnelle)** : pour recevoir les alertes sur **Discord**, créer un webhook
+de salon Discord et ajouter dans `~/ClaraAFJV/.env.local` :
+```
+ALERT_WEBHOOK_URL=https://discord.com/api/webhooks/XXXX/YYYY
+```
+Le cron le prend en compte automatiquement (chargé via `--env-file=.env.local`). Sans cette variable,
+les alertes restent visibles dans `collect.log` (`grep ⚠️ collect.log`).

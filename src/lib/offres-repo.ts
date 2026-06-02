@@ -151,6 +151,17 @@ export async function compterParVue(
   return resultat;
 }
 
+/** Nombre d'offres **en base** par source (toutes pertinences). Pour la surveillance de santé. */
+export async function comptesParSource(): Promise<Record<string, number>> {
+  const lignes = await db
+    .select({ source: offres.source, n: count() })
+    .from(offres)
+    .groupBy(offres.source);
+  const out: Record<string, number> = {};
+  for (const l of lignes) out[l.source] = l.n;
+  return out;
+}
+
 /** Une option de la facette « pays » : libellé + nombre d'offres. */
 export interface FacettePays {
   pays: string;

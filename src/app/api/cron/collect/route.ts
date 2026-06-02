@@ -26,7 +26,7 @@ async function lancer(request: Request): Promise<Response> {
   }
 
   const debut = Date.now();
-  const { rapports, purgees } = await collecterEtPurger();
+  const { rapports, purgees, alertes } = await collecterEtPurger();
   const dureeMs = Date.now() - debut;
 
   const aEchec = rapports.some((r) => r.erreur);
@@ -36,9 +36,10 @@ async function lancer(request: Request): Promise<Response> {
       dureeMs,
       total: rapports.reduce((n, r) => n + r.ecrites, 0),
       purgees,
+      alertes,
       rapports,
     },
-    { status: aEchec ? 207 : 200 },
+    { status: aEchec || alertes.length > 0 ? 207 : 200 },
   );
 }
 

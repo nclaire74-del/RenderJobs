@@ -77,6 +77,8 @@ import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
 import { upsertOffres } from "./upsert";
 import { purgeOffresPerimees } from "./purge";
+import { analyserSante, envoyerAlertes, type Alerte } from "./surveillance";
+import { comptesParSource } from "@/lib/offres-repo";
 
 export interface CollectReport {
   source: string;
@@ -400,6 +402,20 @@ export interface CollectGlobalResult {
   rapports: CollectReport[];
   /** Nombre d'offres périmées supprimées après la collecte (null si purge non lancée). */
   purgees: number | null;
+  /** Alertes de santé des sources (échec / vide suspect). Vide = tout va bien. */
+  alertes: Alerte[];
+}
+
+/** Surveille la santé des sources d'un run (compare à l'état base) et émet les alertes. Best-effort. */
+async function surveiller(rapports: CollectReport[]): Promise<Alerte[]> {
+  try {
+    const alertes = analyserSante(rapports, await comptesParSource());
+    await envoyerAlertes(alertes);
+    return alertes;
+  } catch (e) {
+    console.error(`Surveillance indisponible : ${e instanceof Error ? e.message : String(e)}`);
+    return [];
+  }
 }
 
 /**
@@ -419,6 +435,9 @@ export async function collectLeger(): Promise<CollectReport[]> {
     await collectWorkWithIndies(),
     await collectPixelCareer(),
     await collect80Level(),
+    await collectJobicy(),
+    await collectRemotive(),
+    await collectArtStation(),
   ];
 }
 
@@ -429,15 +448,17 @@ export async function collectLeger(): Promise<CollectReport[]> {
  */
 export async function collecterEtPurger(): Promise<CollectGlobalResult> {
   const rapports = await collectToutes();
+  const alertes = await surveiller(rapports);
   const auMoinsUnSucces = rapports.some((r) => !r.erreur && r.recuperees > 0);
   const purgees = auMoinsUnSucces ? await purgeOffresPerimees() : null;
-  return { rapports, purgees };
+  return { rapports, purgees, alertes };
 }
 
 /** Variante **légère** (sources rapides uniquement) + purge. Pour le cron fréquent (≈20 min). */
 export async function collecterLegerEtPurger(): Promise<CollectGlobalResult> {
   const rapports = await collectLeger();
+  const alertes = await surveiller(rapports);
   const auMoinsUnSucces = rapports.some((r) => !r.erreur && r.recuperees > 0);
   const purgees = auMoinsUnSucces ? await purgeOffresPerimees() : null;
-  return { rapports, purgees };
+  return { rapports, purgees, alertes };
 }

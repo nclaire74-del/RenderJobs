@@ -10,7 +10,7 @@ async function main() {
   const leger = process.argv.slice(2).includes("leger");
   const horodatage = new Date().toISOString();
   console.log(`[${horodatage}] collecte ${leger ? "LÉGÈRE" : "COMPLÈTE"} —`);
-  const { rapports, purgees } = leger
+  const { rapports, purgees, alertes } = leger
     ? await collecterLegerEtPurger()
     : await collecterEtPurger();
   for (const r of rapports) {
@@ -27,7 +27,9 @@ async function main() {
   } else {
     console.log(`🧹 Purge : ${purgees} offre(s) périmée(s) supprimée(s).`);
   }
-  process.exit(rapports.some((r) => r.erreur) ? 1 : 0);
+  // Les alertes sont déjà journalisées par envoyerAlertes ; on sort en erreur si une source casse.
+  const probleme = rapports.some((r) => r.erreur) || alertes.length > 0;
+  process.exit(probleme ? 1 : 0);
 }
 
 void main();
