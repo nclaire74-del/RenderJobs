@@ -6,6 +6,7 @@
 import type { Offre, Pertinence } from "@/domain/offre";
 import { enrichir } from "./enrichir";
 import { classer } from "./classer";
+import { signatureDedup } from "./dedup";
 
 /** Rang de pertinence (plus haut = plus pertinent), pour appliquer un plancher par source. */
 const RANG: Record<Pertinence, number> = { hors_scope: 0, connexe: 1, coeur: 2 };
@@ -29,5 +30,6 @@ export function traiter(offre: Offre, opts: TraiterOptions = {}): Offre {
   if (opts.plancher && RANG[pertinence] < RANG[opts.plancher]) {
     pertinence = opts.plancher;
   }
-  return { ...enrichie, pertinence };
+  const cleDedup = signatureDedup(enrichie.titre, enrichie.studio);
+  return { ...enrichie, pertinence, cleDedup };
 }

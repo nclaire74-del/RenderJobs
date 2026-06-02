@@ -46,6 +46,13 @@ export const offres = pgTable(
 
     salaire: text("salaire"),
 
+    /**
+     * **Signature de déduplication inter-sources** (studio+titre normalisés, cf. `pipeline/dedup.ts`).
+     * `null` = jamais dédupliquée (studio inconnu). Utilisée à la lecture pour n'afficher qu'un
+     * représentant par signature (la source la plus directe).
+     */
+    cleDedup: text("cle_dedup"),
+
     publieLe: timestamp("publie_le", { withTimezone: true }),
     recupereLe: timestamp("recupere_le", { withTimezone: true })
       .notNull()
@@ -60,6 +67,8 @@ export const offres = pgTable(
     index("offres_publie_le_idx").on(t.publieLe),
     // Flux principal = filtrer par pertinence puis trier par fraîcheur.
     index("offres_pertinence_publie_le_idx").on(t.pertinence, t.publieLe),
+    // Déduplication inter-sources à la lecture (regroupement par signature).
+    index("offres_cle_dedup_idx").on(t.cleDedup),
   ],
 );
 

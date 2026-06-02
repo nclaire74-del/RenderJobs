@@ -116,4 +116,10 @@ export interface Offre {
    * `departement` / `equipe` (ATS, à venir). Absent = aucun signal structuré pour cette source.
    */
   signaux?: Record<string, string>;
+
+  /**
+   * **Signature de déduplication inter-sources** (studio+titre normalisés), calculée par le pipeline
+   * (`traiter`) et persistée. `null`/absent = jamais dédupliquée (studio inconnu). Cf. `pipeline/dedup.ts`.
+   */
+  cleDedup?: string | null;
 }

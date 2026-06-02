@@ -13,8 +13,11 @@ GameJobs.co, RemoteOK, RemoteGameJobs, ATS) / complet **2 h** (+ FT, Adzuna, Hit
 Dashboard = Server Component **dynamique** (lit la DB en direct) → l'offre apparaît dès qu'elle est en base.
 `scripts/cron-collect.sh` (flock anti-chevauchement, log `collect.log`). Démon `cron` actif.
 **PURGE AUTO** (ADR-0020) : offre non revue depuis >30 j = supprimée (garde-fou : ≥1 source réussie).
-**Correctif tri** : commerce de détail jeux vidéo (vendeur/librairie) ajouté à `BRUIT_DUR` (caché).
-**Base ≈ 2900 offres** (10 sources ; bouge à chaque collecte/purge).
+**🆕 DÉDUP INTER-SOURCES (ADR-0024)** : signature `cle_dedup` = studio+titre normalisés (null si studio
+inconnu) ; dédup **à la lecture** (CTE `row_number`, garde la source la plus directe : ATS>FT>boards>agrégateurs) ;
+comptages dédupés. **Non destructif** (rien supprimé). Réel : 311 doublons masqués sur ~2043. Migration `0002`.
+⚠️ Peut **sur-fusionner** des postes distincts d'un même studio au même titre (affinage possible avec le lieu).
+**Base ≈ 3127 lignes** (13 sources ; ~1732 offres uniques visibles ; bouge à chaque collecte/purge).
 **Pipeline pertinence + enrichissement LIVRÉ** (ADR-0011) ; **plancher de pertinence par source** (ADR-0012).
 **Dashboard LIVRÉ** (ADR-0015). **🆕 TRI EN COUCHES STRICT** (ADR-0016) : signaux structurés d'abord
 (ROME/catégorie Adzuna/famille AFJV/dept ATS), titre juge du cœur, **défaut strict = caché** ; fin du bruit
@@ -180,8 +183,8 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
 1. **Gains FACILES restants** (R&D faite, `SOURCES.md`) : autres **API remote** (Himalayas, Jobicy,
    Arbeitnow, The Muse `category=Design and UX`) ; **boards fetch+cheerio** (**Work With Indies** ~80,
    **PixelCareer** 3D/anim/VFX) ; **80 Level** = lire le JSON `__NEXT_DATA__` (Next.js, sans navigateur).
-2. **Dédup inter-sources** (ouvert, ADR-0013) : une même offre peut être sur Adzuna **et** FT/ATS/board.
-   ⚠️ Devient plus visible avec 10 sources (HelloWork ∩ FT/Adzuna ; GameJobs.co ∩ Hitmarker/RemoteGameJobs).
+2. ~~**Dédup inter-sources**~~ ✅ **FAIT (ADR-0024)** : signature studio+titre, dédup à la lecture.
+   Reste possible : **affiner avec le lieu** (éviter de sur-fusionner des postes distincts d'un même studio).
 3. **Décision produit : taille de l'onglet connexes** — le restreindre (cacher corporate studio) ou large ?
 4. **Élargir les studios ATS** : ajouter des slugs à `src/config/studios.ts` (sonder GH/Lever/Ashby avant).
 5. **Boards Cloudflare/SPA → installer Playwright** (gros effort, en dernier) : **The Rookies** (juniors,

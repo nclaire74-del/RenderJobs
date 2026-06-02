@@ -520,3 +520,27 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
     corrigé pour les chemins `/careers/{slug}` et `/jobs/{slug}/`.
 - **Conséquence** : `tsc`+`eslint`+**113 tests** (+12). Réel : WWI **100** (41 cœur/59 connexe),
   PixelCareer **6** (5 cœur), 80 Level **10** (4 cœur) — 0 rejet (plancher). **13 sources**, base ≈ **3127**.
+
+## ADR-0024 — Déduplication inter-sources à la lecture (signature studio+titre, non destructive)
+- **Date** : 2026-06-02.
+- **Contexte** : avec 13 sources, une même offre apparaît souvent plusieurs fois (un poste studio repris
+  par ATS + Hitmarker + GameJobs.co + Adzuna…). Demande proprio : n'en **afficher qu'une**. Point
+  ouvert depuis ADR-0013.
+- **Décisions** (lead dev) :
+  1. **Approche non destructive** (display-time), PAS de suppression : chaque source garde sa ligne
+     (clé `(source, source_id)`), mais on **regroupe à la lecture**. Raison : supprimer serait fragile
+     (la ligne réapparaîtrait à la collecte suivante) et perdrait l'info d'attribution multi-sources.
+  2. **Signature** `cle_dedup` = `"<studio>::<titre>"` **normalisés** (minuscules, sans accents, sans
+     marqueurs de genre h/f·m/w/d·nb, sans ponctuation) — `src/pipeline/dedup.ts` (pur, testé).
+     **`null` si studio inconnu** → jamais dédupliquée (évite de fusionner deux « 3D Artist »
+     d'entreprises différentes ; principe R-1 « ne jamais perdre une vraie offre »). Calculée dans
+     `traiter()`, persistée (colonne `offres.cle_dedup` + index ; migration `0002_add_cle_dedup.sql`).
+  3. **Lecture** (`offres-repo`) : CTE `row_number() over (partition by coalesce(cle_dedup, id) order by
+     priorité_source, fraîcheur)` → on ne garde que `rn = 1`. **Priorité de source** = la plus
+     **directe** d'abord (ATS studio → France Travail → boards niche → agrégateurs Adzuna/RemoteOK qui
+     relaient). Les **badges de comptage** comptent aussi les groupes distincts (cohérence affichage).
+- **Conséquence** : `tsc`+`eslint`+**118 tests** (+5). Réel : 2043 offres visibles → **1732 après dédup
+  (311 doublons masqués)** ; « Epic — Senior Gameplay Designer » affiché 1× (copie `ats`). Backfill des
+  3127 lignes existantes (2983 avec signature). **Limite assumée** : la signature studio+titre peut
+  **sur-fusionner** des postes réellement distincts d'un même studio au même intitulé (ex. plusieurs
+  « Gameplay Developer » Wargaming sur des projets/lieux différents) → affinage possible avec le lieu.

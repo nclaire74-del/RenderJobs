@@ -15,6 +15,13 @@
       "when": 1780393750281,
       "tag": "0001_add_pertinence_langue",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780410868922,
+      "tag": "0002_add_cle_dedup",
+      "breakpoints": true
     }
   ]
 }
