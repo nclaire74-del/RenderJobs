@@ -558,3 +558,23 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
 - **Conséquence** : `tsc`+`eslint`+**123 tests** (+5). Réel : Jobicy 22, Remotive 18. **15 sources**.
   Décliné : Himalayas/Arbeitnow (redondants avec l'existant remote), WTTJ (Algolia, clé front à extraire),
   AWN/Cartoon Brew/ShowbizJobs (Cloudflare/SPA → relèvent du chantier « sites durs »).
+
+## ADR-0026 — Infra « sites durs » : Playwright (Chromium headless), prouvé sur AWN + ArtStation
+- **Date** : 2026-06-02. **Décision proprio** : attaquer VFX/anim **et** ArtStation en parallèle,
+  **sans budget proxy d'abord** ; Indeed voulu malgré le risque (plus tard) ; LinkedIn exclu (RGPD/juridique).
+- **Contexte** : les sources niche faciles sont épuisées ; le gisement restant (ArtStation, AWN,
+  Cartoon Brew, ShowbizJobs, GrackleHQ, The Rookies, Indeed, 3DVF-JS) est derrière **Cloudflare/anti-bot**
+  ou **rendu JS**. Il faut un **vrai navigateur**.
+- **Décisions** (lead dev) :
+  1. **Playwright + Chromium headless** installé (dépendance d'exécution : les connecteurs tournent via
+     le cron). Brique « fetch navigateur » réutilisable à venir (`src/lib/navigateur.ts`).
+  2. **Pas de proxy payant pour l'instant** (décision proprio) — on tente en IP directe ; si une cible
+     se met à challenger/limiter, on chiffrera une option payante.
+  3. **Always-on d'abord** (fait, service systemd `clara-hub`) avant d'ajouter des sources lourdes.
+- **PREUVE en réel (2026-06-02)** : Chromium headless **sans proxy** →
+  **AWN** `jobs.awn.com/jobs` HTTP 200, 0 challenge, 36 offres ; **ArtStation** `/jobs` HTTP 200,
+  0 challenge, **107 offres**. Le curl simple renvoyait 403 (Cloudflare) → Playwright passe. **Tout le
+  chantier est dé-risqué.** **Caveat** : Cloudflare peut challenger par intermittence/limiter le débit →
+  prévoir throttle + retry, et garder l'option proxy en réserve.
+- **Suite** : brique navigateur partagée → connecteurs **AWN** (VFX/anim, le plus propre) puis
+  **ArtStation** (cible n°1), puis Cartoon Brew/ShowbizJobs/GrackleHQ, enfin **Indeed** (risque ToS).

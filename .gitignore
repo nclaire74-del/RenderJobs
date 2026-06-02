@@ -43,3 +43,7 @@ next-env.d.ts
 
 # Log de la collecte cron
 collect.log
+
+# Playwright
+test-results/
+playwright-report/
