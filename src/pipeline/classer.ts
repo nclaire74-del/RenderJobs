@@ -1,61 +1,177 @@
 /**
  * Classification de **pertinence** d'une offre vis-à-vis du secteur (cf. `PRODUIT.md` R-1).
  *
- * Principe directeur **non négociable** : on ne perd JAMAIS une vraie offre. Le tri organise
- * l'affichage, il n'élague pas. `hors_scope` (rejet) est une **exception rare** réservée au
- * bruit indiscutable ; **au moindre doute → `connexe`** (montré dans un 2ᵉ flux).
+ * ## Tri **en couches** — signaux structurés d'abord, texte en dernier recours (cf. `RD-TRI.md`)
  *
- * Ordre d'évaluation (les signaux **cœur priment sur le bruit**, pour ne jamais rejeter à tort) :
- *   1. logiciel 3D/VFX/jeu détecté → `coeur` ;
- *   2. vocabulaire métier net → `coeur` ;
- *   3. sinon, bruit industriel/BTP/hors-secteur indiscutable → `hors_scope` ;
- *   4. sinon → `connexe` (la grande zone grise : graphiste, infographiste, motion…).
+ * Le tri purement textuel laissait passer du bruit (« Automaticien » promu cœur par un « Unity »
+ * égaré dans la description ; « Senior Software Engineer » chez *Unity Software* via le nom de la
+ * boîte). La règle : **exploiter d'abord les signaux que la source donne déjà** (code ROME France
+ * Travail, catégorie Adzuna, famille AFJV, département ATS), puis le **titre** (le rôle réel), et
+ * seulement en dernier le corps de l'annonce.
  *
- * Conçu d'après la R&D sur les 214 offres FT : le meilleur discriminant est la présence (ou non)
- * d'un **logiciel cœur** dans la description ; le titre seul est trompeur (« Designer graphique »).
+ * ## Mode **strict** (décision produit 2026-06 : resserrer le tri)
+ *
+ * L'ancien défaut « dans le doute → connexe » transformait l'onglet connexes en déversoir
+ * (usineur, prof de maths, gestion de patrimoine…). Désormais : **aucun signal du secteur → caché**
+ * (`hors_scope`). La sécurité anti-perte (R-1) est préservée autrement : les sources **ciblées par
+ * taxonomie** (France Travail par code ROME) ou **curées** (AFJV/Games-Career, plancher `connexe`
+ * appliqué dans `collect.ts`) ne tombent **jamais** sous `connexe`. Seul le **filet large** (Adzuna,
+ * recherche par phrases) peut être rejeté — c'est précisément la source bruitée.
+ *
+ * Ordre d'évaluation (un `return` = décision finale) :
+ *   1. titre disqualifiant (industrie/finance/enseignement/admin) → `hors_scope` (prime sur tout) ;
+ *   2. catégorie Adzuna franchement hors-secteur → `hors_scope` (sauf signal cœur fort dans le titre) ;
+ *   3. signal structuré cœur **fiable** (département ATS « craft », famille AFJV craft) → `coeur` ;
+ *   4. logiciel/rôle cœur **dans le titre** → `coeur` (seul juge du cœur pour France Travail) ;
+ *   5. plancher de secteur (offre collectée via une taxonomie du secteur : ROME FT, famille AFJV) → `connexe` ;
+ *   6. logiciel/vocabulaire cœur ailleurs (description) → `connexe` ;
+ *   7. périphérie créative (graphiste, motion, UI/UX, CM…) ou catégorie Adzuna créative → `connexe` ;
+ *   8. défaut **strict** → `hors_scope`.
  */
 import type { Offre, Pertinence } from "@/domain/offre";
-import { LOGICIELS_COEUR, replier } from "./enrichir";
+import { LOGICIELS_COEUR_MOTIFS, replier } from "./enrichir";
 
 /**
- * Vocabulaire **art/jeu exclusif** → cœur. Bilingue FR/EN, replié (sans accents).
- * Volontairement SANS les termes 3D génériques (« modélisation 3D », « rendu 3D ») que la
- * mécanique/BTP partagent : ils enverraient à tort un projeteur industriel en cœur.
+ * ⚠️ **Le code ROME France Travail n'est PAS fiable pour promouvoir en cœur.** Sondage réel
+ * (2026-06) : FT renvoie des offres **mal taxonomisées** — un « Cadre de santé » sous `L1510`
+ * (Animateur 3D), un « Consultant SAP »/« Tech Lead Java » sous `M1831`/`E1125` (Lead
+ * programmeur/graphiste jeux vidéo). L'appellation normalisée est tout aussi fausse dans ces cas.
+ * → Pour FT, le ROME ne sert que de **plancher `connexe`** (appartenance au secteur, jamais perdu) ;
+ *   le **cœur est piloté par le TITRE** (le rôle réellement affiché = la vérité terrain).
  */
-const VOCABULAIRE_COEUR = compiler([
-  "jeu video", "jeux video", "jeu-video", "game designer", "game design", "game artist",
-  "game developer", "game programmer", "game dev", "gameplay",
-  "level design", "level designer", "level artist", "narrative design", "narrative designer",
-  "vfx", "effets visuels", "visual effects", "compositing", "rotoscopie",
-  "film d'animation", "long metrage d'animation", "studio d'animation",
-  "rigging", "character artist", "environment artist", "matte painting", "previz",
-  "motion capture", "mocap", "look dev", "lookdev", "concept art", "texturing",
+
+/**
+ * Catégories Adzuna **franchement hors-secteur** (taxonomie large mais fiable en négatif,
+ * cf. `RD-TRI.md` §2.2). On NE bloque PAS `it-jobs`/`engineering-jobs`/`creative-design-jobs`/
+ * `pr-advertising-marketing-jobs`/`retail-jobs` (sectoriels ou adjacents — ex. vente en boutique
+ * de jeu, marketing de studio) : le tri par titre/défaut s'en charge.
+ */
+const CATEGORIES_ADZUNA_HORS = new Set([
+  "accounting-finance-jobs", "sales-jobs", "customer-services-jobs", "hr-jobs",
+  "healthcare-nursing-jobs", "hospitality-catering-jobs", "logistics-warehouse-jobs",
+  "teaching-jobs", "trade-construction-jobs", "admin-jobs", "legal-jobs",
+  "manufacturing-jobs", "scientific-qa-jobs", "social-work-jobs", "travel-jobs",
+  "energy-oil-gas-jobs", "property-jobs", "charity-voluntary-jobs",
+  "domestic-help-cleaning-jobs", "maintenance-jobs",
 ]);
 
 /**
- * Bruit **indiscutable** → hors_scope (uniquement si AUCUN signal cœur). Barre haute (R-1) :
- * BTP, mécanique/usinage, CAO industrielle, impression 3D, électronique, dev web pur,
- * escape game (≠ jeu vidéo), métiers sans rapport avec un artiste.
+ * **Titre disqualifiant** → hors_scope (prime sur tout signal positif, même un logiciel cœur égaré
+ * dans la description). Barre haute (R-1) : on ne disqualifie que sur le **rôle affiché**, jamais
+ * sur le boilerplate. Couvre BTP/manuel, mécanique/usinage, CAO industrielle, électronique/SI pur,
+ * finance/gestion, enseignement, escape game — métiers sans rapport avec un poste créatif 3D/jeu.
  */
 const BRUIT_DUR = compiler([
   // BTP / manuel
   "macon", "cariste", "chauffeur", "chantier", "couvreur", "plombier",
   "electricien", "menuisier", "carrossier", "carrosserie", "facade",
-  // mécanique / industrie (y compris CAO indus citée en titre : 3DX, SolidWorks, CATIA…)
-  "chaudronnier", "chaudronnerie", "usinage", "fraisage", "tournage numerique",
-  "materiaux composites", "soudeur", "soudure", "ajusteur", "tuyauteur",
+  // mécanique / industrie / usinage
+  "chaudronnier", "chaudronnerie", "usinage", "usineur", "fraisage", "fraiseur",
+  "tournage numerique", "tourneur", "regleur", "ajusteur", "tuyauteur", "soudeur", "soudure",
+  "materiaux composites", "metallier", "serrurier", "automaticien", "automatisme",
   "mecanique 3d", "conception mecanique", "bureau d'etudes mecanique",
   "3dx", "3dexperience", "solidworks", "catia", "creo",
   // impression 3D / prototypage matériel
   "impression 3d", "imprimante 3d", "prototypage rapide", "fabrication additive",
-  // électronique / SI pur
+  // électronique / SI / dev & ERP hors secteur (FT mal-taxonomise : SAP/Java/Oracle sous ROME jeu vidéo)
   "fpga", "carte electronique", "developpeur php", "laravel", "symfony",
   "developpeur back", "administrateur systeme", "data engineer", "mdm",
+  "business analyst", "developpeur bi", "business intelligence", "power bi",
+  "cyber security", "cybersecurity", "cybersecurite", "sap", "oracle", "salesforce",
+  ".net", "java", "erp",
   // dessin technique BTP / industriel
   "dessinateur industriel", "dessinateur btp", "dessinateur batiment",
   "dessinateur en agencement", "dessinateur projeteur", "projeteur",
+  // finance / gestion / administratif
+  "comptable", "comptabilite", "fiscaliste", "actuaire", "gestion de patrimoine",
+  "gestionnaire de paie", "controleur de gestion", "auditeur financier",
+  // commerce / vente (≠ vente en boutique de jeu, qui n'arrive pas via ces sources)
+  "commercial lead", "responsable commercial", "directeur commercial",
+  "attache commercial", "technico-commercial", "business developer", "chef de secteur",
+  // santé / paramédical (FT mal-taxonomise ; « Unity » est aussi une marque d'appareil de radiothérapie !)
+  "cadre de sante", "soins", "paramedical", "infirmier", "infirmiere", "aide-soignant",
+  "linac", "radiotherapy", "radiotherapie", "radiology",
+  // enseignement / académique (≠ poste en studio) — « adjunct »/« educator » = postes universitaires
+  "teacher", "teaching", "lecturer", "professor", "professeur", "enseignant",
+  "faculty", "tutor", "instructor", "adjunct", "educator",
   // loisirs / escape game (game master physique ≠ jeu vidéo)
   "escape game", "game master", "laser game",
+]);
+
+/**
+ * Logiciel cœur dans le **titre** = signal cœur le plus fiable (un soft 3D/VFX/jeu affiché
+ * dans le rôle, pas une mention égarée). Compilé depuis le lexique d'enrichissement.
+ */
+const REGEX_LOGICIELS_COEUR = compiler([...LOGICIELS_COEUR_MOTIFS]);
+
+/**
+ * **Rôles créatifs 3D/jeu** : intitulés sans ambiguïté **dans un titre** (généreux à dessein, car
+ * le bruit industriel homonyme — « concepteur mécanique 3D », « modeleur » fonderie — est déjà
+ * écarté par `BRUIT_DUR`). Bilingue FR/EN, replié.
+ */
+const COEUR_TITRE = compiler([
+  "3d artist", "artiste 3d", "3d generalist", "generaliste 3d", "3d modeler", "modeleur 3d",
+  "3d animator", "animateur 3d", "animatrice 3d", "cg artist", "cgi artist",
+  "character artist", "chara artist", "char artist", "character animator", "character designer",
+  "environment artist", "prop artist", "texture artist", "lighting artist",
+  "fx artist", "vfx artist", "technical artist", "tech artist", "rigging artist", "rigger",
+  "matte painter", "concept artist", "game artist", "game designer", "level designer",
+  "level artist", "narrative designer", "gameplay programmer", "gameplay engineer",
+  "engine programmer", "graphics programmer", "rendering engineer", "game programmer",
+  "game developer", "unreal developer", "unity developer", "shader artist",
+  "lookdev artist", "look dev artist", "directeur artistique jeu", "3d generalist artist",
+]);
+
+/**
+ * **Vocabulaire métier cœur** (sémantique, bilingue). Dans le **titre** → `coeur` ;
+ * **ailleurs** (description) → corrobore un `connexe`. Volontairement SANS les termes 3D
+ * génériques (« modélisation 3D », « rendu 3D ») que la mécanique/BTP partagent.
+ */
+const COEUR_TEXTE = compiler([
+  "jeu video", "jeux video", "jeu-video", "game design", "game dev", "gameplay",
+  "level design", "narrative design",
+  "vfx", "effets visuels", "visual effects", "compositing", "rotoscopie",
+  "film d'animation", "films d'animation", "long metrage d'animation", "studio d'animation",
+  "animation 3d", "character animation", "storyboard", "story board", "story boarder", "storyboarder",
+  "rigging", "character artist", "environment artist", "matte painting", "previz",
+  "motion capture", "mocap", "look dev", "lookdev", "concept art", "texturing",
+]);
+
+/**
+ * **Familles métier AFJV** (3ᵉ catégorie du flux) qui prouvent le cœur. Les familles corporate
+ * (« Support / CM », « Marketing / Com », « Production ») ne matchent pas → restent au plancher `connexe`.
+ */
+const FAMILLE_COEUR = compiler([
+  "programmation", "graphisme", "art", "game design", "level design", "animation",
+  "audio", "son", "vfx", "technique", "direction artistique", "concept", "narrative", "qa",
+]);
+
+/**
+ * **Départements ATS « craft »** (Greenhouse/Lever/Ashby…) → `coeur` (cf. `RD-TRI.md` §5bis).
+ * Les départements corporate (People/Legal/Finance/Sales) ne matchent pas → plancher `connexe`
+ * (appliqué par le connecteur ATS). Mapping par mots-clés (libellés non standardisés entre studios).
+ */
+const DEPT_CRAFT = compiler([
+  "engineer", "engineering", "software", "developer", "programming", "programmer", "code",
+  "tools", "art", "animation", "design", "gameplay", "level", "vfx", "fx", "audio", "sound",
+  "graphics", "render", "ui", "ux", "technical art", "production", "qa", "quality",
+  "narrative", "writer", "cinematic", "3d", "data science", "machine learning",
+  "online services", "core tech",
+]);
+
+/**
+ * **Périphérie créative** du secteur (graphiste, motion, UI/UX, CM de studio, illustration…).
+ * Pas le cœur 3D/jeu mais clairement dans l'écosystème → `connexe` (montré). Honore la consigne
+ * « strict mais pas amputé » : la périphérie reste visible, seul le hors-sujet net est caché.
+ */
+const PERIPHERIE = compiler([
+  "graphiste", "infographiste", "designer graphique", "graphic designer",
+  "motion design", "motion designer", "motion graphics", "motion graphic",
+  "community manager", "social media", "ui designer", "ux designer", "ui/ux",
+  "web designer", "webdesigner", "directeur artistique", "art director",
+  "illustrateur", "illustrator", "after effects", "montage video", "monteur video",
+  "video editor", "2d artist", "storyboard", "archviz", "architectural visualization",
+  "retouche photo", "videaste", "cadreur", "directrice artistique",
 ]);
 
 function compiler(motifs: string[]): RegExp {
@@ -66,22 +182,53 @@ function compiler(motifs: string[]): RegExp {
 }
 
 /**
- * Détermine la pertinence d'une offre **déjà enrichie** (ses `logiciels` sont remplis).
- * Pur et déterministe.
+ * Détermine la pertinence d'une offre **déjà enrichie** (logiciels remplis) et munie de ses
+ * **signaux structurés** de source (`offre.signaux`). Pur et déterministe.
  */
 export function classer(offre: Offre): Pertinence {
-  // 1. Un logiciel 3D/VFX/jeu est le signal cœur le plus fiable — et il prime sur tout bruit.
-  if (offre.logiciels.some((l) => LOGICIELS_COEUR.has(l))) return "coeur";
-
-  // Vocabulaire métier : cherché dans titre + description (la description révèle le métier réel).
+  const titre = replier(offre.titre);
   const texte = replier(`${offre.titre}\n${offre.description ?? ""}`);
-  if (VOCABULAIRE_COEUR.test(texte)) return "coeur";
 
-  // 3. Bruit indiscutable → rejet (exception rare, R-1). Le signal fiable est le **titre** (le
-  //    rôle), JAMAIS le boilerplate d'une longue description : une entreprise du BTP qui recrute
-  //    un graphiste reste un poste de graphiste (→ connexe). On ne rejette que sur le métier affiché.
-  if (BRUIT_DUR.test(replier(offre.titre))) return "hors_scope";
+  const signaux = offre.signaux ?? {};
+  const rome = signaux.rome;
+  const categorieAdzuna = signaux.categorieAdzuna;
+  const departement = signaux.departement ? replier(signaux.departement) : "";
+  const famille = signaux.familleMetier ? replier(signaux.familleMetier) : "";
 
-  // 4. Tout le reste : on montre (zone grise). Le doute profite à l'offre.
-  return "connexe";
+  // Signal cœur **fort** = logiciel ou rôle cœur affiché dans le TITRE (pas une mention égarée).
+  const coeurTitre =
+    REGEX_LOGICIELS_COEUR.test(titre) || COEUR_TITRE.test(titre) || COEUR_TEXTE.test(titre);
+
+  // 1. Titre disqualifiant → caché. Prime sur tout (corrige « Automaticien » + « Unity » égaré).
+  if (BRUIT_DUR.test(titre)) return "hors_scope";
+
+  // 2. Catégorie Adzuna franchement hors-secteur → caché, SAUF signal cœur fort dans le titre
+  //    (protège la rare offre studio mal catégorisée). « Teacher of Games Design » est déjà capté
+  //    en (1) par le titre, donc l'exception ne le sauve pas.
+  if (categorieAdzuna && CATEGORIES_ADZUNA_HORS.has(categorieAdzuna) && !coeurTitre) {
+    return "hors_scope";
+  }
+
+  // 3. Signaux structurés cœur **fiables** → coeur. (Le ROME FT est exclu ici : trop d'erreurs de
+  //    taxonomie à la source — cf. note plus haut ; il ne sert que de plancher connexe en (5).)
+  //    ATS = département curé par le studio ; AFJV = board 100 % jeu vidéo, famille fiable.
+  if (departement && DEPT_CRAFT.test(departement)) return "coeur";
+  if (famille && FAMILLE_COEUR.test(famille)) return "coeur";
+
+  // 4. Logiciel/rôle cœur dans le titre → coeur.
+  if (coeurTitre) return "coeur";
+
+  // 5. Plancher de secteur : l'offre a été collectée via une taxonomie du secteur → jamais perdue.
+  if (rome) return "connexe"; // tout code ROME présent ici EST un code du secteur (France Travail)
+  if (famille) return "connexe"; // famille AFJV (même corporate) reste dans l'écosystème jeu vidéo
+
+  // 6. Signal cœur présent ailleurs (description) → corroboration faible → connexe (montré).
+  if (REGEX_LOGICIELS_COEUR.test(texte) || COEUR_TEXTE.test(texte)) return "connexe";
+
+  // 7. Périphérie créative, ou catégorie Adzuna créative → connexe.
+  if (PERIPHERIE.test(texte)) return "connexe";
+  if (categorieAdzuna === "creative-design-jobs") return "connexe";
+
+  // 8. Défaut STRICT : aucun signal du secteur → caché.
+  return "hors_scope";
 }

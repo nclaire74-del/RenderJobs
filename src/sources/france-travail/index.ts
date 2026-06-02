@@ -63,6 +63,14 @@ export const RawOffreFT = z
       .object({ urlOrigine: z.string().optional() })
       .partial()
       .optional(),
+    // Signaux structurés exploités par le tri (cf. RD-TRI.md) : la taxonomie ROME est le
+    // meilleur discriminant cœur disponible — on filtre déjà dessus, autant le transporter.
+    romeCode: z.string().optional(),
+    romeLibelle: z.string().optional(),
+    appellationlibelle: z.string().optional(),
+    formations: z
+      .array(z.object({ domaineLibelle: z.string().optional() }).partial())
+      .optional(),
   })
   .passthrough();
 
@@ -242,5 +250,16 @@ export function normalize(raw: RawOffreFT): Offre {
     publieLe: parseDate(raw.dateCreation),
     recupereLe: new Date(),
     description: raw.description ?? null,
+    signaux: construireSignaux(raw),
   };
+}
+
+/** Assemble les signaux structurés FT exploitables par le tri (clés vides omises). */
+function construireSignaux(raw: RawOffreFT): Record<string, string> {
+  const s: Record<string, string> = {};
+  if (raw.romeCode) s.rome = raw.romeCode;
+  if (raw.appellationlibelle) s.appellation = raw.appellationlibelle;
+  const domaine = raw.formations?.find((f) => f.domaineLibelle)?.domaineLibelle;
+  if (domaine) s.domaineFormation = domaine;
+  return s;
 }

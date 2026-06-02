@@ -315,3 +315,37 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   SI » marqué vfx/animation) → à corriger côté `enrichir`/`classer` (frontières de mots, ancrage titre) ;
   (b) pas encore de **dédup inter-sources** (ADR-0013) ni de **péremption** des offres mortes ; (c) détail
   d'offre = lien externe uniquement (pas de page interne — volontaire pour le MVP, attribution directe).
+
+## ADR-0016 — Tri en couches « signaux structurés d'abord » + mode strict (anti-bruit)
+
+- **Date** : 2026-06-02
+- **Contexte** : au dashboard, le flux cœur ET l'onglet connexes laissaient passer du **hors-sujet net**
+  (usineur/tourneur, automaticien, consultant SAP, cadre de santé, profs, gestion de patrimoine, escape-game
+  « Game Master »…). Cause racine (cf. `RD-TRI.md`) : le classifieur était **100 % textuel** et **jetait les
+  signaux structurés** des sources au `normalize()` ; son défaut « dans le doute → connexe » faisait de
+  l'onglet connexes un déversoir. **Décision produit de la proprio** : resserrer → mode **strict**.
+- **Décisions** (lead dev) :
+  1. **Sac de signaux transient** `Offre.signaux: Record<string,string>` rempli par chaque `normalize()`
+     (FT : `rome`/`appellation`/`domaineFormation` ; Adzuna : `categorieAdzuna` ; AFJV : `familleMetier`),
+     consommé par `classer`. **Non persisté** (le tri tourne avant l'upsert) → aucune migration DB.
+  2. **Classifieur en couches** (`classer.ts`) : (1) titre disqualifiant → `hors_scope` (prime sur tout) ;
+     (2) catégorie Adzuna hors-secteur → `hors_scope` sauf signal cœur fort ; (3) signal structuré **fiable**
+     (département ATS craft, famille AFJV craft) → `coeur` ; (4) **logiciel/rôle cœur dans le TITRE** → `coeur` ;
+     (5) plancher de secteur (ROME FT, famille AFJV) → `connexe` ; (6) signal cœur en description → `connexe` ;
+     (7) périphérie créative / catégorie Adzuna créative → `connexe` ; (8) **défaut STRICT → `hors_scope`**.
+  3. **Le code ROME France Travail n'est PAS un signal cœur** : sondage réel → FT mal-taxonomise
+     (« Cadre de santé » sous `L1510` Animateur 3D ; « Consultant SAP »/« Tech Lead Java » sous `M1831`/`E1125`).
+     → le ROME ne sert que de **plancher `connexe`** ; **le cœur est piloté par le titre** (vérité terrain).
+  4. **Anti-perte préservé (R-1)** : seules les sources à **filet large** (Adzuna par phrases) peuvent tomber
+     en `hors_scope` ; les sources **ciblées par taxonomie** (FT par ROME) ou **curées** (AFJV/Games-Career,
+     plancher `connexe`) ne descendent jamais sous `connexe`.
+  5. **Péremption** : purge des offres non rafraîchies par la dernière collecte (cohérent fraîcheur). Fait en
+     SQL cette session ; **à automatiser dans le pipeline** (point ouvert).
+- **Raison** : transformer le tri d'un problème d'heuristique de texte (fragile) en un problème de **mapping de
+  taxonomies** (testable), fidèle à la R&D `RD-TRI.md`, et honorer la consigne produit « strict ».
+- **Conséquence** : recollecte réelle → **coeur 218 / connexe 362 / hors_scope 832** (connexe −66 % vs 1083).
+  Faux positifs éliminés (vérifié), faux négatifs récupérés (« Chara Artist 3D », « Character Animation Lead »).
+  `tsc` + `eslint` + **63 tests** verts. **Ferme les points ouverts (a) et (b) d'ADR-0015.**
+  **Points ouverts** : automatiser la purge dans le cron ; persister `signaux` (jsonb) si l'on veut reclasser
+  sans re-fetch ; quelques ambigus industriels volontairement cachés en strict (simulateur de vol, 3D auto,
+  « dév. 3D temps réel » pour la simulation) — rééquilibrable si la proprio le souhaite.

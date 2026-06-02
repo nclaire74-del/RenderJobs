@@ -104,4 +104,16 @@ export interface Offre {
 
   /** Description brute de l'annonce. */
   description: string | null;
+
+  /**
+   * **Signaux structurés bruts** fournis par la source (sa taxonomie d'origine), transportés
+   * jusqu'au classifieur de pertinence (`classer.ts`). Champ **transient** : rempli par chaque
+   * `normalize()`, consommé par le pipeline, **non persisté** en base (le tri tourne avant l'upsert).
+   *
+   * Le tri doit s'appuyer sur ces signaux *avant* de retomber sur le texte (cf. `RD-TRI.md`).
+   * Clés conventionnelles : `rome` + `appellation` + `domaineFormation` (France Travail) ;
+   * `categorieAdzuna` (tag de catégorie Adzuna) ; `familleMetier` (3ᵉ catégorie AFJV) ;
+   * `departement` / `equipe` (ATS, à venir). Absent = aucun signal structuré pour cette source.
+   */
+  signaux?: Record<string, string>;
 }

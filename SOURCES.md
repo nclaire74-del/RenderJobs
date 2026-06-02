@@ -21,18 +21,41 @@ La classification (ADR-0011) protège le flux : on peut élargir le filet sans s
 
 ---
 
+## ✅ Recensement — sommes-nous complets ? (revu 2026-06-02)
+
+Bilan par **famille de métiers** (la cible : 3D / animation / jeu vidéo / VFX-film / motion design / infographie).
+« Branché » = connecteur en prod ; « Planifié » = source identifiée + méthode connue, reste à coder.
+
+| Famille | Branché aujourd'hui | Planifié (méthode connue) | Hostile / écarté |
+|---|---|---|---|
+| **Jeu vidéo** | AFJV (FR), Games-Career (EU/EN), France Travail, Adzuna | **ATS studios** (6 plateformes, Riot/Epic/Roblox/Supercell…), Hitmarker, GrackleHQ, Work With Indies, GameJobs.co, 80 Level | — |
+| **VFX / film / animation** | (partiel via FT/Adzuna) | **3DVF (FR)**, AWN (RSS), Cartoon Brew, ShowbizJobs, VES, vfxjobs, Rebelway, Zerply, Animatedjobs, CreativeHeads | grands studios VFX = via boards (pas d'ATS) |
+| **Motion design / 3D art** | (partiel) | The Rookies (juniors), Motionographer, PixelCareer, 80 Level | ArtStation (Cloudflare) |
+| **International / remote** | Adzuna (~20 pays) | The Muse, Reed (UK), Arbeitnow, Himalayas, RemoteOK, Jobicy, Careerjet | Indeed/Glassdoor/Google for Jobs (API fermées) ; LinkedIn (risque juridique) |
+
+**Gros sites grand public** (Indeed, LinkedIn, Glassdoor, Google for Jobs, ZipRecruiter, Monster) : **aucun n'offre
+d'accès propre** en 2026 (APIs fermées 2021–2023, ou ToS/risque juridique). On les traite donc en **dernier** (Tier 4,
+scraping prudent) — ce ne sont pas des sources niche, leur densité 3D est faible et le risque élevé. **Conclusion :
+le vrai gisement n'est pas là**, il est dans les **ATS de studios** (haute pertinence, sans clé) + les **boards niche**.
+
+**Trou identifié et désormais comblé** : le **VFX/film/animation français** (3DVF) et le **motion design**
+(Motionographer) n'étaient pas listés ; ils le sont maintenant. **ArtStation** (demande explicite proprio) est
+confirmé comme cible Tier 4 prioritaire (Cloudflare → Playwright+proxies ou service commercial).
+
+---
+
 ## ⭐ Ordre d'implémentation recommandé (par valeur/effort)
 
-1. ✅ **France Travail** (API, fait — ADR-0010/0011).
-2. **AFJV — RSS** 🟢 : `emploi.afjv.com/rss.xml`. **Sans clé**, cœur jeu vidéo **France**, très haute
-   densité de pertinence. → **prochaine source idéale** (zéro friction, mission-critique).
-3. **Games-Career — RSS par métier** 🟢 : sans clé, jeu vidéo Europe/DE. Même effort qu'AFJV.
-4. **APIs remote sans/peu de friction** 🟢 : Arbeitnow (sans auth), Remotive, RemoteOK → remplit le
-   filtre Remote et l'international tech à bas coût.
-5. **Adzuna / Jooble** 🟢 (clé gratuite) : volume + international + **salaire**. *Optionnel* (cf. §Adzuna).
-6. **Scraping boards niche** 🟠 (Playwright) : Hitmarker, GameJobs.co, Remote Game Jobs, 80 Level,
-   Games Jobs Direct, boards VFX. **Le vrai cœur du « Joker »** — gros volume niche.
-7. **Hostiles** 🔴 (infra proxy d'abord) : ArtStation, Indeed, LinkedIn (offres formelles only), WtJ.
+1. ✅ **France Travail** (API) · ✅ **AFJV** (RSS) · ✅ **Games-Career** (RSS) · ✅ **Adzuna** (API) — **faits**.
+2. ⭐ **Connecteur générique ATS** 🟢 (sans clé, ~100 % pertinent) : **6 plateformes** (Greenhouse, Lever,
+   Ashby, Workable, Recruitee, Personio) pilotées par `src/config/studios.ts`. **Prochaine grosse étape** —
+   meilleur ratio valeur/risque/effort de tout le projet.
+3. **Boards niche à fetch léger / RSS** 🟢🟠 : **AWN (RSS)**, **3DVF** (chercher `/feed/`, VFX/anim **FR**),
+   Work With Indies (RSS) — avant le scraping lourd.
+4. **APIs remote / généralistes** 🟢 : The Muse, Reed (UK), Arbeitnow, Himalayas, RemoteOK, Jobicy (filtrage niche requis).
+5. **Scraping boards niche** 🟠 (Playwright) : Hitmarker, GrackleHQ, GameJobs.co, 80 Level, ShowbizJobs,
+   Cartoon Brew, The Rookies (juniors), Motionographer. **Le vrai cœur du « Joker »** — gros volume niche.
+6. **Hostiles** 🔴 (infra proxy d'abord) : **ArtStation** (priorité, demande proprio), Indeed, LinkedIn (offres formelles only).
 
 ---
 
@@ -55,12 +78,19 @@ Beaucoup de studios hébergent leur page carrière sur un **ATS** dont l'**API d
 (pas d'auth, JSON propre, descriptions complètes). On **cible un studio = on ajoute son slug**.
 Pertinence quasi **100 %** (ce sont les offres directes des studios). Vérifié en réel 2026-06-02 :
 
-| ATS | Endpoint (par entreprise) | Vérifié | Notes |
-|---|---|---|---|
-| **Greenhouse** | `https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true` | ✅ **Riot = 185 offres** | `content=true` → desc HTML + departments + metadata. Le plus riche. |
-| **Lever** | `https://api.lever.co/v0/postings/{slug}?mode=json` | ✅ **Voodoo = 34 offres** | Filtres natifs (team/location/commitment). |
-| **Ashby** | `https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true` | à tester | Salaire propre via `includeCompensation`. |
-| **SmartRecruiters / Workable** | endpoints publics par entreprise | à tester | Idem, à cataloguer si studios concernés. |
+| ATS | Endpoint (par entreprise) | Clé ? | Vérifié | Notes |
+|---|---|---|---|---|
+| **Greenhouse** | `https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true` | non | ✅ **Riot = 185 offres** | `content=true` → desc HTML + departments + metadata. Le plus riche. |
+| **Lever** | `https://api.lever.co/v0/postings/{slug}?mode=json` | non | ✅ **Voodoo = 34 offres** | Filtres natifs (team/location/commitment) + salaire optionnel. |
+| **Ashby** | `https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true` | non | ✅ **Supercell 46 / tgc 25** | Salaire propre via `includeCompensation`. |
+| **Workable** | `https://www.workable.com/api/accounts/{slug}?details=true` | non | R&D 2026-06 (à coder) | Titre, shortcode, URL, lieu, département, type. Endpoints séparés lieux/départements. |
+| **Recruitee** | `https://{slug}.recruitee.com/api/offers/` | non | R&D 2026-06 (à coder) | id, titre, lieu, département, URL carrières, type, statut remote. |
+| **Personio** | `https://{slug}.jobs.personio.de/xml?language=en` | non | R&D 2026-06 (à coder) | **XML** (pas JSON) ; id, société, office, département, catégorie, type. |
+| **SmartRecruiters** | endpoints publics par entreprise | non | à tester | À cataloguer si studios concernés. |
+
+> **6 ATS sans clé** (au lieu de 3) — recensement élargi 2026-06-02. Le **connecteur générique ATS**
+> doit donc accepter un champ `ats` ∈ {greenhouse, lever, ashby, workable, recruitee, personio} par studio.
+> Source du panorama : *6 ATS Platforms with Public Job Posting APIs* (cavuno.com / fantastic.jobs).
 
 **Caveat** : les **slugs** se découvrent **un par un** (devinettes souvent en 404 ; ex. `ubisoft`,
 `unity`, `king` → 404 / autre ATS type Workday). → bâtir une **liste curée de studios** (slug + ATS),
@@ -90,6 +120,10 @@ Génériques (filtrage niche nécessaire, par tag/mot-clé à la source + classi
 | **Jobicy** | `https://jobicy.com/api/v2/remote-jobs` (+ RSS) | 50 dernières. **Attribution demandée**. Params `industry`/`tag`. |
 | **RemoteOK** | `https://remoteok.com/api` (JSON) + RSS | **Attribution requise**. Tags (design, dev…). |
 | **Arbeitnow** | API publique sans auth | Europe + remote (déjà en Tier 1). |
+| **The Muse** | `https://www.themuse.com/api/public/jobs?category=…&page=…` | Sans clé (clé optionnelle pour quota). Catégories « Design », « Creative ». |
+| **Reed (UK)** | `https://www.reed.co.uk/api/1.0/search` | Clé gratuite. Bon pour le **Royaume-Uni**. |
+| **Careerjet** | API de recherche publique | Multi-pays. **Limite de fréquence** (augmentable sur demande). |
+| **USAJobs** | `https://data.usajobs.gov/api/search` | Clé gratuite (email + token). **Emplois publics US** (peu de niche, faible priorité). |
 
 ## Tier 2 — Backends interrogeables (faible/moyen risque)
 
@@ -105,31 +139,47 @@ Pas d'API publique → navigateur automatisé (Playwright). Offres **publiques d
 
 **Jeu vidéo / esport :**
 - **Hitmarker** (hitmarker.net) 🟠 — **plus gros board gaming/esport mondial**, milliers d'offres/mois. Priorité scraping.
+- **GrackleHQ** (gracklehq.com) 🟠 — **agrégateur jeu vidéo, 4000+ offres live** ; structure simple → bon candidat scraping/feed.
 - **GameJobs.co** 🟠 + **Remote Game Jobs** (remotegamejobs.com) 🟠 — game dev, fort en remote.
 - **GameJobs.com** 🟠 — industrie jeu (à distinguer de GameJobs.co).
 - **Games Jobs Direct** 🟠 — UK/USA/Canada/Australie.
 - **80 Level Talent** (80.lv) 🟠 — art/tech jeu, qualitatif.
-- **Work With Indies** 🟠 (option RSS) — jeux indés.
+- **Work With Indies** (workwithindies.com) 🟠 (option RSS) — jeux indés.
+- **GamesIndustry.biz** / **PocketGamer.biz** 🟡 — sections jobs (RSS probable, cf. Tier 2).
 
-**Art 3D / médias :**
+**Art 3D / médias / motion design :**
 - **The Rookies** (therookies.co) 🟠 — **juniors/talents émergents** (cible n°1 du produit). Priorité.
-- **Zerply** 🟠 — VFX & animation.
+- **3DVF** (3dvf.com/offres-emploi) 🟠 — **board FR VFX/animation/ciné/jeu, 1000+ offres** ; comble le trou
+  français hors jeu vidéo (AFJV = jeu vidéo only). WordPress probable → **chercher `/feed/`**. Haute valeur FR.
+- **PixelCareer** (pixelcareer.com) 🟠 — agrégateur quotidien 3D/anim/VFX/gaming, international.
+- **Motionographer Jobs** 🟠 — **motion design** (spécialité demandée par la proprio).
+- **CreativeHeads.net** 🟠 — animation / jeu / VFX (US).
+- **Zerply** (zerply.com/jobs) 🟠 — VFX & animation.
 
 **VFX / film / animation :** (les grands studios VFX — DNEG, Framestore, Weta, ILM, Digital Domain,
 Cinesite… — **ne sont PAS sur les ATS publics** (cf. Tier 1bis) → c'est ICI qu'on les capte.)
 - **VES Job Board** (vesglobal.org/jobboard), **vfxjobs.com**, **vfxengine.com** 🟠 — boards VFX dédiés (offres studios worldwide).
 - **Rebelway** (Houdini) 🟠 — excellent pour le filtre logiciel Houdini.
-- **ShowbizJobs** (animation-vfx), **ProductionHUB**, **AWN (Animation World Network)** 🟠 — animation/film US fort. AWN a un **flux RSS** (à brancher).
+- **AWN — Animation World Network** (jobs.awn.com) 🟠 — animation/film US fort, **flux RSS** (à brancher en priorité).
+- **Cartoon Brew Jobs** (jobs.cartoonbrew.com) 🟠 — studios d'animation worldwide.
+- **Animatedjobs.com** 🟠 — 2D/3D, storyboard, animation.
+- **Animation Magazine Career Center** 🟠 — animation US.
+- **ShowbizJobs** (showbizjobs.com, ~535 offres anim/VFX), **ProductionHUB** 🟠 — entertainment US.
 - **Mandy.com** 🟠 — crew film/TV (filtrer le casting).
 
 ## Tier 4 — Hostiles (étape ultérieure, infra proxy requise)
 
 Fort volume mais **anti-bot agressif** et/ou ToS hostiles → **après** infra résiliente (proxies, vrai navigateur).
-- **ArtStation Jobs** (artstation.com) 🔴 — le plus gros board **art** games/film, MAIS **Cloudflare Bot
-  Management** actif (vérifié). Très haute valeur, mais à attaquer en dernier / avec précautions.
-- **Indeed** 🔴 — **Publisher API dépréciée** (plus de nouvelles intégrations) ; reste l'API Sponsored
-  (payante, annonceurs). → scraping uniquement, hostile.
-- **LinkedIn Jobs** 🔴 — pas d'API publique d'offres ; **offres formelles publiques uniquement**.
+- **ArtStation Jobs** (artstation.com/jobs) 🔴 — le plus gros board **art** games/film (cible explicite proprio),
+  MAIS **Cloudflare Bot Management** actif (vérifié 2026). Très haute valeur. Options : (a) Playwright +
+  proxies résidentiels ; (b) services commerciaux (Bright Data, Apify proposent un scraper ArtStation prêt).
+  Pas d'API publique JSON documentée pour les jobs. **À attaquer en priorité haute du Tier 4 vu la valeur.**
+- **Indeed** 🔴 — **API Publisher fermée en 2021** (plus d'intégration) ; reste l'API Sponsored (payante). → scraping hostile.
+- **Glassdoor** 🔴 — **Partner API fermée en 2023**. Scraping hostile.
+- **Google for Jobs** 🔴 — **aucune API publique** (agrégateur, pas une source à consommer directement).
+- **ZipRecruiter / Monster** 🔴 — agrégateurs généralistes, anti-bot ; faible densité niche.
+- **LinkedIn Jobs** 🔴 — pas d'API publique d'offres ; scraping **juridiquement risqué** (procès LinkedIn,
+  fermeture de Proxycurl mi-2026). **Offres formelles publiques uniquement**, jamais de posts perso (⚫ ligne rouge RGPD).
 - **Welcome to the Jungle** (si l'accès Algolia se ferme) · **APEC** (cadres FR) · **Jobijoba**.
 
 ## Mauvais fit / hors-scope

@@ -56,16 +56,23 @@ describe("afjv / helpers", () => {
     expect(extraireSourceId("https://x/abc/DEF-1/?utm=1")).toBe("DEF-1");
   });
 
-  it("lit contrat + pays dans les catégories", () => {
+  it("lit contrat + pays + famille métier dans les catégories", () => {
     expect(lireCategories(["Stage", "France", "Infographie"])).toEqual({
       contrat: "stage",
       pays: "France",
+      famille: "Infographie",
     });
     expect(lireCategories(["Freelance", "Belgique", "Test / QA"])).toEqual({
       contrat: "freelance",
       pays: "Belgique",
+      famille: "Test / QA",
     });
-    expect(lireCategories(["Conception"])).toEqual({ contrat: null, pays: null });
+    // Une seule catégorie « métier » (ni contrat ni pays) → famille, contrat/pays nuls.
+    expect(lireCategories(["Conception"])).toEqual({
+      contrat: null,
+      pays: null,
+      famille: "Conception",
+    });
   });
 
   it("extrait studio + ville de la description", () => {

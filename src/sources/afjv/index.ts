@@ -68,21 +68,29 @@ function parseDate(s: string | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Mappe les catégories vers contrat + pays (insensible à la casse/accents). */
+/** Mappe les catégories vers contrat + pays + famille métier (insensible à la casse/accents).
+ *  Les catégories AFJV = contrat + pays + **famille métier** (ex. « Programmation », « Graphisme / Art »).
+ *  La famille = ce qui n'est ni un contrat ni un pays → signal structuré pour le tri (cf. RD-TRI.md §2.3). */
 export function lireCategories(categories: string[]): {
   contrat: Contrat | null;
   pays: string | null;
+  famille: string | null;
 } {
   let contrat: Contrat | null = null;
   let pays: string | null = null;
+  let famille: string | null = null;
   for (const cat of categories) {
-    const c = cat.trim().toLowerCase();
-    if (!contrat && c in CONTRAT_PAR_CATEGORIE) contrat = CONTRAT_PAR_CATEGORIE[c];
-    if (!pays && PAYS_CONNUS.has(c)) {
-      pays = cat.trim().charAt(0).toUpperCase() + cat.trim().slice(1).toLowerCase();
+    const brut = cat.trim();
+    const c = brut.toLowerCase();
+    if (c in CONTRAT_PAR_CATEGORIE) {
+      if (!contrat) contrat = CONTRAT_PAR_CATEGORIE[c];
+    } else if (PAYS_CONNUS.has(c)) {
+      if (!pays) pays = brut.charAt(0).toUpperCase() + brut.slice(1).toLowerCase();
+    } else if (!famille && brut) {
+      famille = brut; // ni contrat ni pays → famille métier
     }
   }
-  return { contrat, pays };
+  return { contrat, pays, famille };
 }
 
 /** Extrait studio + ville de la description « <Studio> recrute … Poste basé à <ville> ». */
@@ -125,7 +133,7 @@ export function parseFlux(xml: string): RawItemAfjv[] {
 /** Ramène un item RSS AFJV au type métier `Offre`. */
 export function normalize(raw: RawItemAfjv): Offre {
   const sourceId = extraireSourceId(raw.link);
-  const { contrat, pays } = lireCategories(raw.category);
+  const { contrat, pays, famille } = lireCategories(raw.category);
   const { studio, ville } = lireDescription(raw.description);
 
   return {
@@ -150,5 +158,6 @@ export function normalize(raw: RawItemAfjv): Offre {
     publieLe: parseDate(raw.pubDate),
     recupereLe: new Date(),
     description: raw.description ?? null,
+    signaux: famille ? { familleMetier: famille } : {},
   };
 }

@@ -127,6 +127,13 @@ const TOUS_LOGICIELS = [
 export const LOGICIELS_COEUR: ReadonlySet<string> = new Set(
   LOGICIELS_3D_JEU.map((e) => e.canon),
 );
+/**
+ * Motifs (repliés) des logiciels **cœur**, à plat. Le classifieur s'en sert pour tester la
+ * présence d'un soft cœur **dans le titre seul** (signal fort) vs la description (corroboration).
+ */
+export const LOGICIELS_COEUR_MOTIFS: readonly string[] = LOGICIELS_3D_JEU.flatMap(
+  (e) => e.motifs,
+);
 /** Labels CAO industrielle : signal hors-scope pour le classifieur (mécanique, pas archi). */
 export const LOGICIELS_CAO_INDUS_LABELS: ReadonlySet<string> = new Set(
   LOGICIELS_CAO_INDUS.map((e) => e.canon),

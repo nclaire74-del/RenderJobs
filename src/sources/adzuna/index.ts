@@ -72,6 +72,12 @@ export const RawOffreAdzuna = z
     salary_is_predicted: z.coerce.string().optional(),
     contract_type: z.string().optional(), // permanent | contract
     contract_time: z.string().optional(), // full_time | part_time
+    /** Catégorie Adzuna (taxonomie large) : `tag` = identifiant stable (« it-jobs », « teaching-jobs »…).
+     *  Signal de **filtre négatif** pour le tri (cf. RD-TRI.md §2.2) — mauvais signal positif, bon négatif. */
+    category: z
+      .object({ tag: z.string().optional(), label: z.string().optional() })
+      .partial()
+      .optional(),
     /** Injecté par nous (pas renvoyé par l'API) : le pays interrogé, source de vérité du `pays`. */
     paysCode: z.string().optional(),
   })
@@ -250,5 +256,6 @@ export function normalize(raw: RawOffreAdzuna): Offre {
     publieLe: parseDate(raw.created),
     recupereLe: new Date(),
     description: raw.description ?? null,
+    signaux: raw.category?.tag ? { categorieAdzuna: raw.category.tag } : {},
   };
 }
