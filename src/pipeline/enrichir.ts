@@ -220,10 +220,12 @@ const SPECIALITES: Entree[] = [
 
 const NIVEAU_LEAD = compilerMotifs([
   "lead", "supervisor", "superviseur", "head of", "directeur artistique",
-  "directrice artistique", "art director", "principal",
+  "directrice artistique", "art director",
 ]);
+// « principal » seul (Principal Artist/Designer/Engineer) = niveau **senior** d'expertise, PAS un
+// rôle d'encadrement → senior (et non lead, qui implique le management d'une équipe).
 const NIVEAU_SENIOR = compilerMotifs([
-  "senior", "confirme", "experimente", "expert", "principal artist",
+  "senior", "confirme", "experimente", "expert", "principal",
 ]);
 const NIVEAU_JUNIOR = compilerMotifs([
   "junior", "debutant", "debutante", "jeune diplome", "sortie d'ecole",

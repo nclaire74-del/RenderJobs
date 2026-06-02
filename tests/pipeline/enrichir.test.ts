@@ -88,6 +88,8 @@ describe("enrichir / spécialités, niveau, mode, langue", () => {
   it("déduit le niveau avec priorité lead > senior > junior", () => {
     expect(enrichir(offre("Lead Animator", "senior team")).experience).toBe("lead");
     expect(enrichir(offre("Senior FX", "")).experience).toBe("senior");
+    // « Principal » = niveau d'expertise senior, PAS un rôle d'encadrement (finding audit #6).
+    expect(enrichir(offre("Principal Artist", "")).experience).toBe("senior");
     expect(enrichir(offre("Stagiaire 3D", "jeune diplômé")).experience).toBe("junior");
     expect(enrichir(offre("Animateur 3D", "")).experience).toBeNull();
   });

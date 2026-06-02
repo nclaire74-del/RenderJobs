@@ -96,6 +96,18 @@ describe("classer / hors_scope — défaut STRICT (aucun signal du secteur)", ()
   });
 });
 
+describe("classer / SI mal-taxonomisé — motifs ERP conditionnés au ROME (régression finding audit #7)", () => {
+  it("titre SI clair SOUS un ROME jeu vidéo (mauvaise taxonomie FT) → caché", () => {
+    expect(classerComplet("Consultant SAP (H/F)", "", { rome: "M1831" })).toBe("hors_scope");
+    expect(classerComplet("Développeur Java J2EE", "ERP d'entreprise.", { rome: "M1805" })).toBe("hors_scope");
+  });
+  it("rôle JEU avec techno .NET/Java sur filet large (SANS ROME) → coeur, PAS tué par le motif SI", () => {
+    // Le bug corrigé : « .net » nu dans BRUIT_DUR cachait ces rôles studio légitimes.
+    expect(classerComplet("Gameplay Programmer (C#/.NET)")).toBe("coeur");
+    expect(classerComplet("Game Engine Programmer", "C++ and Java tooling.")).toBe("coeur");
+  });
+});
+
 describe("classer / connexe — sources protégées + périphérie", () => {
   it("plancher de secteur : code ROME large (E1205) → connexe, jamais perdu", () => {
     expect(classerComplet("Graphiste (H/F)", "PAO, supports print.", { rome: "E1205" })).toBe("connexe");

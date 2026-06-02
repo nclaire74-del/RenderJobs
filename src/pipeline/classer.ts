@@ -73,12 +73,14 @@ const BRUIT_DUR = compiler([
   "3dx", "3dexperience", "solidworks", "catia", "creo",
   // impression 3D / prototypage matériel
   "impression 3d", "imprimante 3d", "prototypage rapide", "fabrication additive",
-  // électronique / SI / dev & ERP hors secteur (FT mal-taxonomise : SAP/Java/Oracle sous ROME jeu vidéo)
+  // électronique / SI / dev hors secteur. ⚠️ Les motifs **ambigus** (sap/.net/java/oracle/erp) sont
+  // sortis d'ici : ils tuaient des rôles studio légitimes (« .NET Gameplay Programmer », « Java Backend
+  // Engineer » d'un studio) sur les filets larges. Ils ne sont du bruit que dans la **mauvaise
+  // taxonomie France Travail** → traités séparément via `BRUIT_SI_TAXONOMIE` (conditionné au ROME).
   "fpga", "carte electronique", "developpeur php", "laravel", "symfony",
   "developpeur back", "administrateur systeme", "data engineer", "mdm",
   "business analyst", "developpeur bi", "business intelligence", "power bi",
-  "cyber security", "cybersecurity", "cybersecurite", "sap", "oracle", "salesforce",
-  ".net", "java", "erp",
+  "cyber security", "cybersecurity", "cybersecurite",
   // dessin technique BTP / industriel
   "dessinateur industriel", "dessinateur btp", "dessinateur batiment",
   "dessinateur en agencement", "dessinateur projeteur", "projeteur",
@@ -106,6 +108,16 @@ const BRUIT_DUR = compiler([
  * dans le rôle, pas une mention égarée). Compilé depuis le lexique d'enrichissement.
  */
 const REGEX_LOGICIELS_COEUR = compiler([...LOGICIELS_COEUR_MOTIFS]);
+
+/**
+ * **SI / ERP mal-taxonomisé par France Travail** : termes franchement « systèmes d'information /
+ * gestion » qui n'ont de sens « bruit » **que** quand FT a collé un code ROME jeu vidéo sur un poste
+ * d'entreprise (Consultant SAP, Dév Java/.NET d'ERP). Ambigus en absolu (un studio a des devs .NET/Java
+ * légitimes) → on ne disqualifie sur ces motifs **que si un ROME est présent** (cf. règle 4bis).
+ */
+const BRUIT_SI_TAXONOMIE = compiler([
+  "sap", "oracle", "salesforce", ".net", "java", "j2ee", "erp", "abap", "pl/sql",
+]);
 
 /**
  * **Rôles créatifs 3D/jeu** : intitulés sans ambiguïté **dans un titre** (généreux à dessein, car
@@ -225,6 +237,11 @@ export function classer(offre: Offre): Pertinence {
 
   // 4. Logiciel/rôle cœur dans le titre → coeur.
   if (coeurTitre) return "coeur";
+
+  // 4bis. SI/ERP mal-taxonomisé par FT : ROME jeu vidéo collé sur un poste SI/gestion (Consultant SAP,
+  //       Dév Java/.NET d'entreprise) → le ROME ne prouve pas le métier, c'est du bruit → caché. Ne
+  //       touche PAS les filets larges sans ROME (un « .NET Gameplay Programmer » est déjà cœur en (4)).
+  if (rome && BRUIT_SI_TAXONOMIE.test(titre)) return "hors_scope";
 
   // 5. Plancher de secteur : l'offre a été collectée via une taxonomie du secteur → jamais perdue.
   if (rome) return "connexe"; // tout code ROME présent ici EST un code du secteur (France Travail)
