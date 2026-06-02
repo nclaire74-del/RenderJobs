@@ -24,7 +24,8 @@ Sondage HTTP (statut, type, marqueurs SPA/Cloudflare, liens d'offres dans le HTM
 | **GameJobs.co** | **Cloudflare** + SPA | 🔴 Playwright |
 | **GrackleHQ** | **Cloudflare** (page-défi 7 ko) | 🔴 Playwright |
 | **Motionographer** | **Cloudflare** (mais HTML servi) | 🟠/🔴 à retenter avec en-têtes navigateur |
-| **AWN (jobs.awn.com)** | **403 Cloudflare** sur `/feed` et `/jobs` | 🔴 Playwright/proxies |
+| **AWN (jobs.awn.com)** | **403 Cloudflare** en curl → ✅ **Playwright headless passe** (ADR-0027) | ✅ **Fait** (navigateur, sans plancher) |
+| **ArtStation** | Page Cloudflare MAIS **API JSON publique** `api/v2/jobs/public` accessible **en direct** | ✅ **Fait (ADR-0027)** — 90 offres, 54 cœur 3D |
 | **3DVF** | RSS catégorie « offres-emploi » **vide** ce jour ; HTML liste = peu de liens | 🟠 à scraper en HTML (revérifier le flux plus tard) |
 | **Cartoon Brew / ShowbizJobs / vfxjobs** | timeouts / pas de réponse propre au sondage | à re-sonder |
 
