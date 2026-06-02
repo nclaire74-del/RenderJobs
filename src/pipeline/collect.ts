@@ -500,3 +500,28 @@ export async function collecterLegerEtPurger(): Promise<CollectGlobalResult> {
   const purgees = auMoinsUnSucces ? await purgeOffresPerimees() : null;
   return { rapports, purgees, alertes };
 }
+
+/**
+ * Sources **express** : flux **curés à une seule requête** (RSS/Atom), instantanés et sans quota
+ * → rafraîchis **très** souvent (cron ≈ 5 min) pour un effet **temps réel** sur les offres niche
+ * (ex. une annonce AFJV doit apparaître au plus vite). Sous-ensemble strict de `collectLeger`,
+ * limité aux feeds à 1 fetch (pas d'ATS multi-studios, pas de cheerio multi-pages, pas de quota).
+ */
+export async function collectExpress(): Promise<CollectReport[]> {
+  return [
+    await collectAfjv(),
+    await collectGamesCareer(),
+    await collectGameJobsCo(),
+  ];
+}
+
+/**
+ * Variante **express** (flux curés instantanés) + surveillance, **sans purge** : l'express ne sert
+ * qu'à faire entrer vite les nouvelles offres ; la purge des périmées reste au léger/complet.
+ * Pour le cron très fréquent (≈5 min).
+ */
+export async function collecterExpress(): Promise<CollectGlobalResult> {
+  const rapports = await collectExpress();
+  const alertes = await surveiller(rapports);
+  return { rapports, purgees: null, alertes };
+}

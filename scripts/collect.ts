@@ -3,16 +3,29 @@
  * Les variables d'environnement sont chargées via `--env-file=.env.local`
  * (cf. script npm), AVANT l'import du pipeline (les imports ES sont hissés).
  */
-import { collecterEtPurger, collecterLegerEtPurger } from "@/pipeline/collect";
+import {
+  collecterEtPurger,
+  collecterLegerEtPurger,
+  collecterExpress,
+} from "@/pipeline/collect";
 
 async function main() {
-  // `npm run collect -- leger` → sources rapides seulement (cron fréquent) ; sinon collecte complète.
-  const leger = process.argv.slice(2).includes("leger");
+  // Mode de collecte : `express` (flux curés, cron ~5 min) | `leger` (sources rapides, ~20 min)
+  // | défaut `complet` (toutes les sources + purge, ~2 h).
+  const args = process.argv.slice(2);
+  const mode = args.includes("express")
+    ? "express"
+    : args.includes("leger")
+      ? "leger"
+      : "complet";
   const horodatage = new Date().toISOString();
-  console.log(`[${horodatage}] collecte ${leger ? "LÉGÈRE" : "COMPLÈTE"} —`);
-  const { rapports, purgees, alertes } = leger
-    ? await collecterLegerEtPurger()
-    : await collecterEtPurger();
+  console.log(`[${horodatage}] collecte ${mode.toUpperCase()} —`);
+  const { rapports, purgees, alertes } =
+    mode === "express"
+      ? await collecterExpress()
+      : mode === "leger"
+        ? await collecterLegerEtPurger()
+        : await collecterEtPurger();
   for (const r of rapports) {
     if (r.erreur) {
       console.error(`✗ ${r.source} : ${r.erreur}`);
@@ -22,7 +35,9 @@ async function main() {
       );
     }
   }
-  if (purgees === null) {
+  if (mode === "express") {
+    // L'express n'a pas de purge (volontaire) — pas de message trompeur.
+  } else if (purgees === null) {
     console.warn("⚠ Purge ignorée (aucune source n'a réussi).");
   } else {
     console.log(`🧹 Purge : ${purgees} offre(s) périmée(s) supprimée(s).`);
