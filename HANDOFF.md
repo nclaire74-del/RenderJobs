@@ -3,7 +3,7 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. Format court et opérationnel.
 
-**Dernière mise à jour** : 2026-06-02 (session : **+3 sources gains-faciles + TEMPS RÉEL (cron)** — ADR-0021/0022)
+**Dernière mise à jour** : 2026-06-02 (session : **chantier sites durs — ArtStation/AWN/GrackleHQ/Indeed + Playwright + surveillance + base propre** — ADR-0026→0030)
 **Phase en cours** : **Phase 1 (MVP)**. **13 sources vivantes** : France Travail (API) · AFJV (RSS) ·
 Adzuna (API) · Games-Career (RSS) · ATS studios (GH/Lever/Ashby) · RemoteGameJobs (cheerio) ·
 Hitmarker (sitemap+JSON-LD) · GameJobs.co (Atom) · RemoteOK (API) · HelloWork (recherche FR + JSON-LD) ·
@@ -35,7 +35,9 @@ garder cœur 3D/jeu/VFX/anim + périphérie). **Point ouvert produit** : l'ongle
 
 **✅ État git (reprise propre)** : tout est **commité**, arbre **propre**. Derniers commits sur `master`/branche : ATS · tri strict · dashboard · RemoteGameJobs · Hitmarker&purge ·
 **GameJobs.co+RemoteOK+HelloWork + cron temps réel**. Vérifié au vert : `tsc` + `eslint` + **101 tests** (+13).
-**Playwright toujours PAS installé** (tous les boards faits jusqu'ici contournés via flux/API/JSON-LD).
+**Playwright INSTALLÉ** (ADR-0026) + brique `src/lib/navigateur.ts` (`htmlRendu`/`htmlRenduLot`) — sert AWN,
+GrackleHQ, Indeed (ArtStation = API directe). **Always-on** : service systemd `clara-hub` (build prod, auto-restart).
+**Base propre** : `hors_scope` plus stockées (ADR-0028). **~142 tests** verts.
 ⚠️ **Le cron tourne désormais en continu** (collecte la base toutes les 20 min / 2 h) — `crontab -l` pour voir. Commit **local** (pas de remote configuré — pousser si un dépôt distant existe).
 **Toutes les clés API sont présentes et fonctionnent.**
 ⚠️ **Purge périmés faite à la main** cette session (DELETE par fenêtre `recupere_le` + studios retirés) —
