@@ -41,3 +41,41 @@ export async function htmlRendu(url: string, opts: HtmlRenduOptions = {}): Promi
     await browser.close();
   }
 }
+
+/**
+ * Récupère le HTML rendu de **plusieurs URLs** en **un seul** lancement de navigateur, mais avec un
+ * **contexte neuf par URL** (plus discret) et une **pause** entre chaque (politesse). Une URL en échec
+ * donne `null` à sa position (résilience). Idéal pour une recherche multi-requêtes (ex. Indeed).
+ */
+export async function htmlRenduLot(
+  urls: string[],
+  opts: HtmlRenduOptions & { pauseEntreMs?: number } = {},
+): Promise<(string | null)[]> {
+  const { chromium } = await import("playwright");
+  const browser = await chromium.launch({ headless: true });
+  const out: (string | null)[] = [];
+  try {
+    for (let i = 0; i < urls.length; i++) {
+      const ctx = await browser.newContext({ userAgent: USER_AGENT, locale: "fr-FR" });
+      try {
+        const page = await ctx.newPage();
+        await page.goto(urls[i], {
+          waitUntil: opts.waitUntil ?? "domcontentloaded",
+          timeout: opts.timeoutMs ?? 45000,
+        });
+        if (opts.attendreMs !== 0) await page.waitForTimeout(opts.attendreMs ?? 3500);
+        out.push(await page.content());
+      } catch {
+        out.push(null);
+      } finally {
+        await ctx.close();
+      }
+      if (i < urls.length - 1) {
+        await new Promise((r) => setTimeout(r, opts.pauseEntreMs ?? 1500));
+      }
+    }
+    return out;
+  } finally {
+    await browser.close();
+  }
+}

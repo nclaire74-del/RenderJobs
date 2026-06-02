@@ -7,7 +7,7 @@
 **Phase en cours** : **Phase 1 (MVP)**. **13 sources vivantes** : France Travail (API) · AFJV (RSS) ·
 Adzuna (API) · Games-Career (RSS) · ATS studios (GH/Lever/Ashby) · RemoteGameJobs (cheerio) ·
 Hitmarker (sitemap+JSON-LD) · GameJobs.co (Atom) · RemoteOK (API) · HelloWork (recherche FR + JSON-LD) ·
-**Work With Indies** (RSS indé) · **PixelCareer** (RSS 3D/anim) · **80 Level** (JSON) · **🆕 Jobicy** · **🆕 Remotive** (API remote design). **15 sources** + **🆕 ArtStation** (API, 54 cœur 3D) + **🆕 AWN** (navigateur headless) = **17 sources**.
+**Work With Indies** (RSS indé) · **PixelCareer** (RSS 3D/anim) · **80 Level** (JSON) · **🆕 Jobicy** · **🆕 Remotive** (API remote design). **15 sources** + **🆕 ArtStation** (API, 54 cœur 3D) + **AWN** + **🆕 GrackleHQ** + **🆕 Indeed** (navigateur) = **19 sources**. (The Rookies/CartoonBrew/ShowbizJobs écartés/différés, cf. ADR-0029.)
 **🔄 TEMPS RÉEL (ADR-0022)** : **cron système 2 vitesses** — léger **20 min** (AFJV, Games-Career,
 GameJobs.co, RemoteOK, RemoteGameJobs, ATS) / complet **2 h** (+ FT, Adzuna, Hitmarker, HelloWork).
 Dashboard = Server Component **dynamique** (lit la DB en direct) → l'offre apparaît dès qu'elle est en base.

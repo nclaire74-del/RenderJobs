@@ -629,3 +629,18 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
 - **Conséquence** : `tsc`+`eslint`+**139 tests** (+4). **18 sources.** Playwright sert maintenant 3 sources
   (AWN, GrackleHQ + ArtStation en direct API). **Reste** : Indeed (le plus hostile) ; Cartoon Brew (URL) ;
   ShowbizJobs (analyse fine).
+
+## ADR-0030 — Indeed (navigateur headless, recherche multi-phrases FR)
+- **Date** : 2026-06-02. Demande explicite proprio (« je veux Indeed quand même »), risque assumé.
+- **Contexte** : API Publisher fermée + anti-bot. Vérifié : `fr.indeed.com/jobs?q=…` **passe via Chromium
+  headless sans CAPTCHA** (2026-06). Cartes `.job_seen_beacon` (`data-jk`, `.jobTitle`,
+  `[data-testid=company-name|text-location]`).
+- **Décisions** (lead dev) : `src/sources/indeed/` — recherche par **phrases métier FR** (4), via
+  nouveau helper **`htmlRenduLot`** (1 navigateur, **contexte neuf + pause par requête** = coût réduit +
+  plus discret). URL canonique `viewjob?jk=`. Généraliste → **pas de plancher** (tri strict filtre fort).
+  Navigateur multi-requêtes (~26 s) → **cron complet 2 h** uniquement. Posture **prudente** (peu de
+  requêtes, throttle, offres publiques, attribution).
+- **⚠️ ToS** : Indeed interdit le scraping → risque assumé/documenté ; surveillance (ADR + alerte) préviendra
+  si Indeed se met à bloquer (passer alors par proxies, cf. ADR-0026). **LinkedIn reste exclu** (juridique/RGPD).
+- **Conséquence** : `tsc`+`eslint`+**142 tests** (+3), build Next OK. Réel : 54 ramenées → **26 écrites**
+  (17 cœur / 9 connexe ; 28 pubs/hors-sujet filtrées) — dont alternance/stage FR (cible juniors). **19 sources.**
