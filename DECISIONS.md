@@ -99,3 +99,187 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   La séquence API→RSS→scrape donne de la valeur vite et concentre le risque là où il est nécessaire.
 - **Conséquence** : architecture par **connecteurs** isolés (1 dossier/source) exposant `fetch()` +
   `normalize()` vers le type `Offre` commun ; chaque connecteur est testable et désactivable seul.
+
+## ADR-0009 — Direction produit : pertinence, langue, périmètre, public
+
+- **Date** : 2026-06-02
+- **Contexte** : Avant d'attaquer le dashboard et l'enrichissement, cadrage des **arbitrages produit**
+  (use cases / edge cases) restés ouverts. Décisions **stratégiques** prises par la propriétaire ;
+  conséquences techniques tranchées par le lead dev. Détail des parcours/règles : **`PRODUIT.md`**.
+- **Décisions** :
+  1. **Pertinence en 3 classes** (`coeur` / `connexe` / `hors_scope`). **Principe directeur recadré
+     (2026-06-02) : on ne perd JAMAIS une vraie offre — le tri organise l'affichage, il ne supprime pas.**
+     Le rejet (`hors_scope`) est une **exception rare** réservée au **bruit indiscutable** (imprimante 3D,
+     BTP…) ; **au moindre doute → `connexe`** (montré dans un 2ᵉ flux, pas une poubelle). → nécessite un
+     champ **`pertinence`** sur l'`Offre` et une étape de **classification conservatrice** au pipeline.
+  2. **L'enrichissement annote, ne filtre jamais** : une offre du secteur sans étiquette déductible
+     est **affichée** (logiciels/spécialités vides = état valide). La *pertinence* (1) peut exclure ;
+     l'*enrichissement* non. Deux décisions distinctes.
+  3. **Périmètre international d'emblée** : FR + Europe + US/UK dès le départ. **Adzuna** (multi-pays,
+     non bloquée) devient la **1ʳᵉ source vivante** ; FT couvre la France ; boards anglophones tôt.
+     **Enrichissement bilingue FR/EN** (logiciels déjà neutres ; niveaux/spécialités doublés).
+     Le **pays** devient un filtre de premier plan.
+  4. **Langue** *(choix technique du lead dev)* : offres affichées **dans leur langue d'origine**
+     (pas de traduction auto) ; **UI en français** au lancement mais **i18n-ready** (textes externalisés).
+  5. **Public n°1 = juniors / sorties d'école** : oriente les **défauts** du dashboard (mise en avant
+     stage/alternance/junior, source The Rookies tôt, détection fine du niveau débutant FR/EN).
+     N'exclut personne — tous niveaux/contrats restent présents et filtrables.
+- **Raison** : maximiser la **confiance** (flux propre) sans sacrifier la **couverture** (onglet connexes
+  + enrichissement non filtrant) ; viser la promesse « Joker international » dès le départ ; servir en
+  priorité un public mal adressé ailleurs (juniors). Coût assumé : enrichissement bilingue + UI i18n-ready.
+- **Conséquence** : impacts modèle (`pertinence`, possiblement `langue` + état/péremption), pipeline
+  (classification + dictionnaires bilingues), dashboard (flux+onglet, filtre pays, défauts juniors).
+  Réordonne les priorités : **Adzuna avant le déblocage FT**. Détail vivant dans `HANDOFF.md`.
+
+## ADR-0010 — Moteur générique (secteur = config) + refonte du connecteur France Travail (ROME)
+
+- **Date** : 2026-06-02
+- **Contexte** : Clés FT régénérées → auth OAuth + recherche **OK** (blocage HANDOFF levé). Décision de
+  direction de la proprio : on **cible le secteur 3D/JV aujourd'hui, mais le code ne doit pas être verrouillé
+  dessus** — la niche est un *paramètre*, pas une hypothèse codée en dur ; produit pensé pour **scaler**. En
+  parallèle, R&D « maîtrise de l'API » : la collecte par **mots-clés** ramenait beaucoup de bruit (vendeur
+  d'articles de sport, désinsectisation…).
+- **Options** : (a) garder la recherche par mots-clés (haute couverture, mauvais ratio bruit) ; (b) cibler par
+  **`codeROME`** (référentiel métier FT, haute précision) ; (c) hybride ROME + mots-clés complémentaires.
+- **Décision** :
+  1. **Moteur générique** : nouveau type `Secteur` (`src/domain/secteur.ts`) consommé par les connecteurs ;
+     le **secteur actif** vit dans `src/config/secteur-actif.ts` (codes ROME + mots-clés). Changer de secteur
+     = éditer ce fichier, sans toucher au moteur.
+  2. **Connecteur FT par ROME** (option c) : recherche **par `codeROME`** (codes choisis *empiriquement* en
+     sondant les `romeCode` réels des offres du secteur) + quelques mots-clés en filet. Pagination fiabilisée
+     via l'en-tête **`Content-Range`** ; **plafond API 1150/critère** géré et **journalisé** (pas de troncature
+     muette). `auth.ts` : **scope OAuth paramétrable** + cache par scope (réutilisable pour ROME/Marché du travail).
+     `publieeDepuis` (défaut 31 j) borne la fraîcheur et le volume.
+- **Raison** : précision >> bruit tant que le **classifieur de pertinence** (ADR-0009) n'existe pas — éviter
+  une base saturée de hors-sujet. Le moteur générique sert la cible « scale » et n'engage pas le secteur.
+- **Réconciliation avec ADR-0009** (« on ne perd jamais une vraie offre ») : ce principe gouverne l'étape de
+  **classification** (ne pas *rejeter* au doute), pas le *scope de collecte*. Cibler par ROME est un scope
+  assumé, **réglable par config** (élargir `codesRome`/`motsCles`) sans changement de code. **Une fois le
+  classifieur de pertinence livré**, on pourra **élargir le filet** (plus de ROME + mots-clés) : le tri
+  `connexe`/`hors_scope` masquera le bruit **sans perdre d'offre**. Tradeoff de couverture **assumé à court terme**.
+- **Conséquence** : `MOTS_CLES_DEFAUT` codé en dur supprimé ; signature `fetchOffres(secteur, opts)`. Base
+  repartie propre (TRUNCATE + recollecte) : **214 offres** nettement plus pertinentes, villes lisibles. Tests :
+  `parseContentRangeTotal` + sanity config. **Point ouvert** : revisiter la **couverture (recall)** quand le
+  classifieur arrivera (élargir le filet ROME/mots-clés).
+
+## ADR-0011 — Pipeline pertinence + enrichissement (enrichir AVANT classer ; rejet sur le titre)
+
+- **Date** : 2026-06-02
+- **Contexte** : Avec 214 offres FT réelles en base, R&D sur la **qualité** : même ciblé par ROME, le
+  flux contient ~21 % de bruit indiscutable (BTP, mécanique/CAO indus, impression 3D, escape game,
+  dev web), et 38 % de « graphiste/infographiste/designer graphique » **ambigus**. Constat clé : le
+  **titre seul ne suffit pas** à juger le cœur (« Designer graphique » peut être 3D *ou* PAO print) ;
+  le vrai signal est dans la **description**, surtout **les logiciels cités** (Blender/Maya/Houdini/
+  Unreal = cœur ; InDesign/PAO = print). Toutes les descriptions sont présentes (~1745 car. en moy.).
+- **Décisions** :
+  1. **Modèle** : ajout du champ **`pertinence`** (`coeur|connexe|hors_scope`, défaut `connexe`) et
+     **`langue`** (ISO 639-1) à `Offre` + schéma + migration `0001` + index `(pertinence, publie_le)`.
+  2. **Ordre du pipeline inversé vs HANDOFF** : `normalize → **enrichir → classer** → upsert`.
+     L'enrichissement (déterministe, pur) **fournit le signal** (logiciels) que la classification
+     consomme. `traiter()` compose les deux dans `collect.ts`.
+  3. **Enrichissement** (`src/pipeline/enrichir.ts`, pur, bilingue FR/EN) : lexiques **logiciels**
+     groupés par famille (3D/jeu = cœur ; motion ; print Adobe ; CAO indus ; AEC/archviz),
+     **spécialités**, **niveau** (lead>senior>junior), **mode de travail**, **langue**. Repli
+     accents+casse, frontières alphanumériques (lookbehind/lookahead) pour éviter les sous-mots.
+     **N'annote jamais filtre** (R-2) ; n'écrase pas une valeur déjà fournie par la source.
+  4. **Classification** (`src/pipeline/classer.ts`, pur) — règle **asymétrique**, fidèle à R-1 :
+     - **cœur** = un **logiciel 3D/jeu** détecté (titre+desc) **OU** vocabulaire art/jeu exclusif.
+       Le vocabulaire 3D *générique* (« modélisation 3D », « rendu 3D ») est **exclu** (la mécanique
+       le partage). Les signaux cœur **priment sur le bruit** (jamais de rejet à tort).
+     - **hors_scope** = mot de bruit indiscutable présent **dans le TITRE uniquement** (jamais le
+       boilerplate de description : une entreprise du BTP qui recrute un graphiste reste un graphiste).
+     - **connexe** = tout le reste (le doute profite à l'offre).
+  5. **Upsert** : les champs déduits (logiciels/spécialités/experience/pertinence/langue) sont
+     désormais **rafraîchis à chaque collecte** (déterministes) — l'ancien « ne pas réécrire » n'a
+     plus lieu d'être.
+- **Raison** : maximiser la **confiance** (flux cœur propre) **sans jamais perdre une vraie offre**.
+  L'asymétrie titre/description est le cœur de la trouvaille : cœur = preuve dans la description ;
+  rejet = certitude affichée dans le titre. Validé en réel : **12 cœur / 157 connexe / 45 hors_scope**,
+  hors_scope = **100 % bruit légitime, 0 rôle artistique rejeté**.
+- **Conséquence** : flux FR pur **mince** (~12 cœur) → confirme la priorité **Adzuna + boards
+  anglophones** (ADR-0009) pour le volume international. Couverture enrichissement : 104/214 avec
+  logiciel, 64 avec niveau. **Point ouvert** : recalibrer les seuils quand d'autres sources
+  arriveront ; détection de langue à challenger sur du vrai contenu EN (FT = 100 % `fr`).
+
+## ADR-0012 — 2ᵉ source : connecteur AFJV (RSS) + plancher de pertinence par source
+
+- **Date** : 2026-06-02
+- **Contexte** : Direction produit (la proprio) : la demande du secteur est **mince** → multiplier les
+  sources, ne pas se limiter à France Travail. R&D web (cf. `SOURCES.md`, MAJ 2026-06-02) : **AFJV**
+  (cœur jeu vidéo France) expose un **flux RSS ouvert** `emploi.afjv.com/rss.xml`, **sans clé** —
+  meilleur ratio valeur/effort. (Adzuna jugé *optionnel* : agrégateur généraliste, faible densité niche.)
+- **Décisions** :
+  1. **Connecteur AFJV** (`src/sources/afjv/`) au même contrat que FT : `fetchOffres()` + `normalize()`
+     Zod → `Offre`. Parse RSS via **`fast-xml-parser`** (nouvelle dép.). Extrait studio+ville de la
+     `description` (« <studio> recrute… Poste basé à <ville> »), contrat+pays des `category`, `sourceId`
+     du lien. `parseFlux()` séparé de `fetchOffres()` pour test hors-réseau. AFJV est **mono-secteur**
+     → pas de ciblage `Secteur` (tout le flux est pertinent ; le tri range ensuite).
+  2. **Plancher de pertinence par source** : `traiter(offre, { plancher })` extrait dans un module
+     **pur** `src/pipeline/traiter.ts` (découplé de la DB, donc testable). Une source **curée** (board
+     niche fiable) ne descend jamais sous son plancher. **AFJV → plancher `connexe`** : le classifieur
+     générique ne sait pas que la source est déjà 100 % jeu vidéo, donc on l'empêche de **rejeter** à
+     tort (ex. « Game Master » chez un studio VR = vrai métier du jeu, pas un escape game). FT (généraliste)
+     → **pas de plancher**.
+  3. **Correctif classifieur** (bénéficie aux 2 sources) : ajout des variantes `-er` au vocabulaire cœur
+     (`level designer`, `narrative designer`, `game design`…) — la frontière alphanumérique faisait rater
+     « level design**er** ».
+  4. **Pipeline multi-sources** : `collectToutes()` = FT + AFJV, **isolées** (une source en échec n'arrête
+     pas les autres). `npm run collect` lance les deux.
+- **Raison** : volume **et** pertinence dans une niche pauvre ; le plancher réconcilie un classifieur
+  générique avec des sources de confiance hétérogènes, sans casser R-1.
+- **Conséquence** : base = **302 offres** (214 FT + 88 AFJV). AFJV : **36 cœur / 52 connexe / 0 hors_scope**
+  (densité cœur ~41 % vs 5,6 % pour FT → valeur de la source niche confirmée). Tests : **39 verts**
+  (`afjv/normalize`, `traiter`). **Point ouvert** : enrichir AFJV est limité (description RSS courte ~80
+  car.) → envisager de **fetcher la page de détail** par offre (scraping léger) pour de meilleures
+  étiquettes logiciels/spécialités.
+
+## ADR-0013 — 3ᵉ source : connecteur Adzuna (international, par phrases métier)
+
+- **Date** : 2026-06-02
+- **Contexte** : La proprio a créé le compte Adzuna et fourni les accès (app « 333FM's AppDefault », *live*).
+  Adzuna était jugé « optionnel » (ADR-0012), mais c'est le meilleur levier pour la promesse **« international
+  d'emblée »** (ADR-0009) : une API JSON simple couvrant ~20 pays, là où FT = France et AFJV = FR/jeu vidéo.
+- **Décisions** :
+  1. **Connecteur Adzuna** (`src/sources/adzuna/`) au même contrat que les autres : `fetchOffres(secteur)` +
+     `normalize()` Zod → `Offre`. API `…/jobs/{pays}/search/{page}` ; accès `ADZUNA_APP_ID`/`ADZUNA_APP_KEY`.
+  2. **Recherche par phrases métier** : Adzuna n'a pas de taxonomie type ROME → nouveau champ
+     **`Secteur.requetesTexte`** (phrases discriminantes **bilingues** « game developer », « 3D artist »… ;
+     pas de termes nus « 3D »/« game »). Indépendant de `Secteur.motsCles` (réservé au filet FT) pour **ne pas
+     élargir FT par effet de bord**. Boucle **pays × phrases**, dédup par `id`, **pas de plancher** (net large
+     → le pipeline classe). Cf. [[moteur-generique-secteur-config]].
+  3. **Robustesse production** : throttle 1200 ms entre appels (rate limit) ; **429 → arrêt propre** ; 401/403
+     → erreur (creds) ; autre erreur → requête ignorée + log ; `max_days_old=31`. Pays défaut `fr/gb/us`.
+- **Raison** : couverture internationale immédiate à faible coût ; le classifieur conservateur + le statut
+  `connexe` absorbent le bruit d'une source large sans perdre d'offre (R-1).
+- **Conséquence** : base = **1357 offres** ; Adzuna apporte **1053** offres (US 395 / UK 336 / FR 322) →
+  **201 cœur / 822 connexe / 30 hors_scope** : la classification bilingue tient sur l'anglais. Tests : connecteur
+  Adzuna (`normalize`, `construireSalaire`, `mapContrat`). **Point ouvert** : dédup **inter-sources** (une même
+  offre peut apparaître sur Adzuna **et** FT/board) — non gérée (clé d'unicité actuelle = `source`+`sourceId`).
+
+## ADR-0014 — 4ᵉ source : Games-Career (RSS) + R&D d'expansion des sources (ATS publics, APIs remote)
+
+- **Date** : 2026-06-02
+- **Contexte** : Direction proprio : la demande étant **mince**, multiplier les sources gratuites. R&D web
+  (vérifs réelles 2026-06) pour cartographier ce qui est branchable **sans clé/scraping**. Mise à jour
+  complète de `SOURCES.md`.
+- **Décisions / livrables** :
+  1. **Connecteur Games-Career** (`src/sources/games-career/`) : flux RSS global `…/rss/Joboffer`,
+     même contrat que les autres. Spécifs : titre « <Studio>: <Rôle> » (split), **`content:encoded`** =
+     desc HTML complète → helper `stripHtml()` (texte brut riche pour l'enrichissement). `guid` → `sourceId`.
+     Board curé jeu vidéo → **plancher `connexe`** (comme AFJV). Contenu **anglophone** → **valide
+     l'enrichissement/langue sur EN** (11/11 détectées `en`).
+  2. **R&D — gros déblocage documenté (pas encore codé) : API publiques d'ATS par studio** (🟢 sans auth,
+     JSON, légal). Vérifié en réel : **Greenhouse** `boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true`
+     (Riot = 185 offres), **Lever** `api.lever.co/v0/postings/{slug}?mode=json` (Voodoo = 34), **Ashby**.
+     Pertinence ~100 % (offres directes des studios). **Caveat** : slugs à curer un par un → futur
+     connecteur **générique ATS** piloté par une liste `src/config/studios.ts`. **Candidat n°1** pour la
+     prochaine grosse étape source.
+  3. **R&D — APIs remote gratuites sans auth** (Himalayas, Jobicy, RemoteOK, Arbeitnow) : volume + EN,
+     mais génériques (filtrage niche requis). Priorité moindre.
+- **Raison** : maximiser la couverture niche à coût/risque minimal (API/RSS d'abord, ADR-0008) ; l'ATS
+  ouvre une **nouvelle classe de sources** très haute pertinence sans scraping.
+- **Conséquence** : 4 sources vivantes ; base ≈ **1409 offres** (FT 215 / AFJV 89 / Adzuna 1094 /
+  Games-Career 11). Tests : `games-career` (`stripHtml`, `lireTitre`, `parseFlux`, `normalize`) → **57 verts**.
+  **Point ouvert** : sur un board curé, le vocabulaire cœur trouvé dans la *description* peut **sur-promouvoir**
+  en `coeur` un rôle support (ex. « Monetization Manager » dont la JD cite « game design ») — sens sûr (R-1),
+  à surveiller au dashboard ; raffinement possible = exiger le signal cœur dans le **titre** pour ces sources.

@@ -3,88 +3,150 @@
 > Livrable de R&D (mis à jour au fil de l'eau). Objectif : couverture **maximale** des offres
 > publiques du secteur. Classé par **méthode d'accès** (du moins risqué au plus risqué).
 > Rappel légal permanent : **offres publiques uniquement**, jamais de données personnelles (RGPD).
-> Posture de collecte validée : **agressive / zone grise** (cf. ADR-0007), mais déployée **par étapes**
-> (le plus atteignable et le moins risqué d'abord).
+> Posture validée : **agressive / zone grise** (ADR-0007), déployée **par étapes** (le plus
+> atteignable et le moins risqué d'abord).
 
-Dernière R&D : 2026-06-01.
+Dernière R&D : **2026-06-02** (vérification web des méthodes d'accès). Méthodes notées :
+🟢 API/flux officiel · 🟡 backend interrogeable (Algolia/JSON) · 🟠 scraping (HTML public) ·
+🔴 hostile (anti-bot/ToS) · ⚫ ligne rouge (jamais).
 
 ---
 
 ## Contexte marché (à garder en tête)
 
 Le marché **jeu vidéo** s'est contracté d'environ **71 % d'offres entre 2022 et 2025** (source AFJV).
-Conséquence stratégique : ne pas se limiter au jeu — agréger aussi **VFX / film / animation / pub**
-pour offrir du volume et de la pertinence. Le secteur 3D dépasse largement le seul gaming.
+Conséquence stratégique : la demande étant **mince**, on **multiplie les sources** et on n'agrège pas
+que le jeu — aussi **VFX / film / animation / pub / 3D temps réel** — pour du volume ET de la pertinence.
+La classification (ADR-0011) protège le flux : on peut élargir le filet sans saturer le « cœur ».
 
 ---
 
-## Tier 1 — API officielles (faible risque, à brancher en PREMIER)
+## ⭐ Ordre d'implémentation recommandé (par valeur/effort)
 
-Couverture énorme pour un coût/risque minimal. Plusieurs sont gratuites. **Priorité d'implémentation.**
+1. ✅ **France Travail** (API, fait — ADR-0010/0011).
+2. **AFJV — RSS** 🟢 : `emploi.afjv.com/rss.xml`. **Sans clé**, cœur jeu vidéo **France**, très haute
+   densité de pertinence. → **prochaine source idéale** (zéro friction, mission-critique).
+3. **Games-Career — RSS par métier** 🟢 : sans clé, jeu vidéo Europe/DE. Même effort qu'AFJV.
+4. **APIs remote sans/peu de friction** 🟢 : Arbeitnow (sans auth), Remotive, RemoteOK → remplit le
+   filtre Remote et l'international tech à bas coût.
+5. **Adzuna / Jooble** 🟢 (clé gratuite) : volume + international + **salaire**. *Optionnel* (cf. §Adzuna).
+6. **Scraping boards niche** 🟠 (Playwright) : Hitmarker, GameJobs.co, Remote Game Jobs, 80 Level,
+   Games Jobs Direct, boards VFX. **Le vrai cœur du « Joker »** — gros volume niche.
+7. **Hostiles** 🔴 (infra proxy d'abord) : ArtStation, Indeed, LinkedIn (offres formelles only), WtJ.
+
+---
+
+## Tier 1 — API / flux officiels (faible risque, à brancher en PREMIER)
+
+| Source | Accès | Périmètre | Notes (vérifié 2026-06) |
+|---|---|---|---|
+| **France Travail** | 🟢 API OAuth2 gratuite | France | ✅ Fait (par codeROME). ADR-0006/0010. |
+| **AFJV** | 🟢 **RSS `/rss.xml`** | **Jeu vidéo FR** + Belgique | ✅ **Fait (ADR-0012)** : connecteur `src/sources/afjv/`, 88 offres, plancher `connexe`. Pépite FR. |
+| **Games-Career.com** | 🟢 RSS par métier | Jeu vidéo Europe/DE | ✅ **Fait (ADR-0013)** : `games-career.com/rss/Joboffer` (global) ou par métier. `content:encoded` = desc HTML riche. Contenu **EN**. |
+| **Adzuna** | 🟢 API (clé gratuite app_id+app_key) | 12+ pays + **salaire** | Tier gratuit généreux. Agrégateur **généraliste** (densité niche faible). *Optionnel.* |
+| **Jooble** | 🟢 API REST (clé) | Multi-pays | Agrégateur. Complément géo. |
+| **Arbeitnow** | 🟢 API **sans auth** | Europe (DE) + remote | Tier gratuit, beaucoup de remote tech. |
+| **Remotive / RemoteOK** | 🟢 API | 100 % remote tech/design | Pratique pour le filtre Remote. |
+| **EURES** | 🟢 API officielle UE | Europe | À évaluer (plan §4). |
+
+## ⭐ Tier 1bis — API publiques d'ATS par studio (🟢 sans clé, JSON, légal) — **GROS DÉBLOCAGE**
+
+Beaucoup de studios hébergent leur page carrière sur un **ATS** dont l'**API de job board est publique**
+(pas d'auth, JSON propre, descriptions complètes). On **cible un studio = on ajoute son slug**.
+Pertinence quasi **100 %** (ce sont les offres directes des studios). Vérifié en réel 2026-06-02 :
+
+| ATS | Endpoint (par entreprise) | Vérifié | Notes |
+|---|---|---|---|
+| **Greenhouse** | `https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true` | ✅ **Riot = 185 offres** | `content=true` → desc HTML + departments + metadata. Le plus riche. |
+| **Lever** | `https://api.lever.co/v0/postings/{slug}?mode=json` | ✅ **Voodoo = 34 offres** | Filtres natifs (team/location/commitment). |
+| **Ashby** | `https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true` | à tester | Salaire propre via `includeCompensation`. |
+| **SmartRecruiters / Workable** | endpoints publics par entreprise | à tester | Idem, à cataloguer si studios concernés. |
+
+**Caveat** : les **slugs** se découvrent **un par un** (devinettes souvent en 404 ; ex. `ubisoft`,
+`remedy-entertainment` → 404). → bâtir une **liste curée de studios** (slug + ATS), pilotée par config,
+type `src/config/studios.ts`. Seeds confirmés : `riotgames`/greenhouse, `voodoo`/lever. Source d'amorçage :
+annuaire « Top game studios hiring artists » (The Rookies). **Connecteur générique ATS** = 1 seul code,
+N studios → forte scalabilité. **Candidat n°1 pour la prochaine grosse étape source.**
+
+## Tier 1ter — APIs remote gratuites (🟢 sans auth) — volume + contenu **EN**
+
+Génériques (filtrage niche nécessaire, par tag/mot-clé à la source + classifieur). Utiles pour le
+**remote** et pour éprouver l'enrichissement EN. Vérifiées 2026-06 :
+
+| Source | Endpoint | Notes |
+|---|---|---|
+| **Himalayas** | `https://himalayas.app/jobs/api` (+ `/search`, + RSS Atom) | Sans auth. Filtres seniority/type/timezone. |
+| **Jobicy** | `https://jobicy.com/api/v2/remote-jobs` (+ RSS) | 50 dernières. **Attribution demandée**. Params `industry`/`tag`. |
+| **RemoteOK** | `https://remoteok.com/api` (JSON) + RSS | **Attribution requise**. Tags (design, dev…). |
+| **Arbeitnow** | API publique sans auth | Europe + remote (déjà en Tier 1). |
+
+## Tier 2 — Backends interrogeables (faible/moyen risque)
 
 | Source | Accès | Périmètre | Notes |
 |---|---|---|---|
-| **France Travail** | API OAuth2 gratuite | France, tous secteurs | Fondation (filtrer par mots-clés métier). Déjà ADR-0006. |
-| **Adzuna** | API dev gratuite (clé) | Multi-pays (FR inclus) + **données salaire** | Gros agrégateur. Filtrer par mots-clés 3D/VFX/game. Très bon ratio. |
-| **Jooble** | API REST (clé) | Multi-pays | Agrégateur. Bon complément géographique. |
-| **Arbeitnow** | API gratuite, sans auth | Europe (DE fort) + remote | Tier gratuit généreux. Beaucoup de remote tech. |
-| **Remotive** | API (remote) | 100 % remote, tech/design | Pratique pour le filtre Remote. |
-| **The Muse / RemoteOK** | API | Remote / tech | À évaluer pour le remote. |
-| **EURES** | API officielle UE | Europe | À évaluer (cf. plan §4). |
+| **Welcome to the Jungle** | 🟡 backend **Algolia** | FR + tech/startups | Index Algolia interrogeable (search_jobs, salaire, contrat). Studios/tech présents. Pas d'API « officielle » publique → à manier proprement. |
+| **HelloWork** | 🟠 pas d'API de consommation | FR généraliste | Le flux JSON HelloWork est réservé aux **recruteurs** diffusant *leurs* offres ; pour nous → **scraping** HTML (offres publiques). |
+| **GamesIndustry.biz / PocketGamer.biz** | 🟡 sections jobs, RSS probable | Industrie jeu | À vérifier au branchement. |
 
-## Tier 2 — Flux RSS (faible risque)
-
-Stables, légers, faits pour être consommés par des machines.
-
-| Source | Périmètre | Notes |
-|---|---|---|
-| **Games-Career.com** | Jeu vidéo (Europe/DE) | RSS **par métier** (ex. "Programmer", "Artist"). Excellent. |
-| **Work With Indies** | Jeux indés | Option RSS. Communauté artistes/devs. |
-| **AFJV** (emploi.afjv.com) | **Jeu vidéo France** | « collecte quasi toutes les offres FR du jeu vidéo ». RSS/scrape à vérifier. **Clé pour la France.** |
-| **GamesIndustry.biz / PocketGamer.biz** | Jeu vidéo (industrie) | Sections jobs, RSS probable. |
-
-## Tier 3 — Boards spécialisés à scraper (posture agressive, vrai cœur du « Joker »)
+## Tier 3 — Boards niche à scraper (posture agressive, cœur du « Joker »)
 
 Pas d'API publique → navigateur automatisé (Playwright). Offres **publiques d'entreprises**.
 
 **Jeu vidéo / esport :**
-- **Hitmarker** (hitmarker.net) — référence gaming/esport, gros volume.
-- **Work With Indies** — jeux indés (si RSS insuffisant).
-- **Games Jobs Direct** — UK/USA/Canada/Australie.
-- **80 Level Talent**, **GameJobs.co** (cf. plan).
+- **Hitmarker** (hitmarker.net) 🟠 — **plus gros board gaming/esport mondial**, milliers d'offres/mois. Priorité scraping.
+- **GameJobs.co** 🟠 + **Remote Game Jobs** (remotegamejobs.com) 🟠 — game dev, fort en remote.
+- **GameJobs.com** 🟠 — industrie jeu (à distinguer de GameJobs.co).
+- **Games Jobs Direct** 🟠 — UK/USA/Canada/Australie.
+- **80 Level Talent** (80.lv) 🟠 — art/tech jeu, qualitatif.
+- **Work With Indies** 🟠 (option RSS) — jeux indés.
 
-**Art 3D / médias-divertissement :**
-- **ArtStation Jobs** (artstation.com) — **le plus gros board art games/film/média**. Priorité haute.
-- **The Rookies** (therookies.co) — juniors / talents émergents (bon pour le filtre Junior).
-- **Zerply** — VFX & animation.
+**Art 3D / médias :**
+- **The Rookies** (therookies.co) 🟠 — **juniors/talents émergents** (cible n°1 du produit). Priorité.
+- **Zerply** 🟠 — VFX & animation.
 
 **VFX / film / animation :**
-- **VES — Visual Effects Society** (vesglobal.org/jobboard) — board pro VFX.
-- **vfxjobs.com**, **vfxengine.com** — boards VFX dédiés.
-- **Rebelway VFX/Houdini board** — offres Houdini (excellent pour le filtre logiciel Houdini).
-- **ShowbizJobs** — animation/VFX/film.
-- **ProductionHUB** — production film/vidéo/animation (US fort).
-- **Mandy.com** — crew film/TV (surtout casting, mais crew technique présent — à filtrer).
-- **AWN — Animation World Network** — animation.
+- **VES Job Board**, **vfxjobs.com**, **vfxengine.com** 🟠 — boards VFX dédiés.
+- **Rebelway** (Houdini) 🟠 — excellent pour le filtre logiciel Houdini.
+- **ShowbizJobs**, **ProductionHUB**, **AWN (Animation World Network)** 🟠 — animation/film US fort.
+- **Mandy.com** 🟠 — crew film/TV (filtrer le casting).
 
-## Tier 4 — Zone grise avancée (étape ultérieure, infra proxy requise)
+## Tier 4 — Hostiles (étape ultérieure, infra proxy requise)
 
-Fort volume mais ToS hostiles + protections anti-bot → **après** que l'infra résiliente soit prête.
-- **LinkedIn Jobs** (offres formelles publiques uniquement — jamais les posts perso : RGPD).
-- **Indeed**, **Jobijoba**, **Job, Welcome to the Jungle**, **APEC** (cadres FR).
+Fort volume mais **anti-bot agressif** et/ou ToS hostiles → **après** infra résiliente (proxies, vrai navigateur).
+- **ArtStation Jobs** (artstation.com) 🔴 — le plus gros board **art** games/film, MAIS **Cloudflare Bot
+  Management** actif (vérifié). Très haute valeur, mais à attaquer en dernier / avec précautions.
+- **Indeed** 🔴 — **Publisher API dépréciée** (plus de nouvelles intégrations) ; reste l'API Sponsored
+  (payante, annonceurs). → scraping uniquement, hostile.
+- **LinkedIn Jobs** 🔴 — pas d'API publique d'offres ; **offres formelles publiques uniquement**.
+- **Welcome to the Jungle** (si l'accès Algolia se ferme) · **APEC** (cadres FR) · **Jobijoba**.
 
-## Hors-scope (ligne rouge légale, définitive)
+## Mauvais fit / hors-scope
 
-- ❌ **Posts personnels de recruteurs** (LinkedIn « on recrute ») par scraping auto → RGPD.
+- **Malt** ⚠️ — marketplace **inversée** (les entreprises *cherchent* des freelances ; pas un board
+  d'annonces à consommer). Peu adapté à notre modèle « offres ». À écarter pour l'instant.
+- ⚫ **Posts personnels de recruteurs** (LinkedIn « on recrute ») → **RGPD, ligne rouge définitive**.
   Captés uniquement via **soumission communautaire** (humain dans la boucle).
 
 ---
 
-## Filtres « différenciants » — vocabulaire d'enrichissement (à maintenir)
+## Note — Adzuna est-il nécessaire ?
 
-Mots-clés à détecter dans le texte des annonces (pipeline d'enrichissement) :
-- **Logiciels** : Blender, Maya, 3ds Max, ZBrush, Houdini, Cinema 4D, Substance (Painter/Designer),
-  Nuke, Unreal Engine, Unity, Marvelous Designer, SpeedTree, Katana, Mari, After Effects, Photoshop.
-- **Spécialités** : Character, Environment, Prop, Rigging, Animation, VFX/FX, Lighting, Look-dev,
-  Compositing, Technical Artist, Pipeline TD, Cinematic, Concept Art, Texturing, Modeling, Layout.
-- **Niveaux** : Junior, Mid/Confirmé, Senior, Lead, Principal, Director.
+**Non, pas indispensable.** La clé Adzuna ne sert qu'à utiliser *l'API d'Adzuna* (gratuite, inscription
+30 s). Mais Adzuna est un **agrégateur généraliste** : volume et salaire à bas coût, mais **faible densité
+niche** (mêmes parasites que FT, absorbés par notre classifieur). On obtient **mieux et sans clé** avec
+les **RSS niche** (AFJV, Games-Career) puis le **scraping** des boards spécialisés. → Adzuna = *bonus de
+volume optionnel*, jamais un prérequis. Priorité aux sources à forte densité métier.
+
+---
+
+## Filtres « différenciants » — vocabulaire d'enrichissement (implémenté, ADR-0011)
+
+Détection dans le texte des annonces (`src/pipeline/enrichir.ts`, bilingue FR/EN) :
+- **Logiciels** (cœur) : Blender, Maya, 3ds Max, ZBrush, Houdini, Cinema 4D, Substance, Nuke, Mari,
+  Unreal Engine, Unity, Marvelous Designer, SpeedTree, Toon Boom, Arnold, V-Ray, Redshift… ;
+  (motion) After Effects, Premiere ; (print) Photoshop/Illustrator/InDesign ; (CAO indus → hors-scope)
+  SolidWorks/CATIA/3DX ; (AEC → neutre) AutoCAD/Revit.
+- **Spécialités** : character, environment, rigging, modeling, texturing/look-dev, lighting,
+  compositing, VFX/FX, animation, motion-design, concept-art, game-design, storyboard, matte-painting,
+  previz, rotoscopie, archviz.
+- **Niveaux** : junior, confirmé, senior, lead/principal/director.
