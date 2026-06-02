@@ -48,10 +48,11 @@ donc pas de perte critique. (Couverture directe = R&D « découverte de slugs »
   les widgets « sociétés » et « articles » (`wk_cms_organizations_production`, `wk_cms_articles_production`) — **PAS
   d'index jobs** (25 bundles scannés). ⚠️ **Les offres elles-mêmes sont servies côté serveur / API interne** :
   endpoints publics jobs testés → **404** ; page rendue → **ni `__NEXT_DATA__` ni cartes DOM exposées** ; fetch
-  serveur → **mur anti-bot**. → **PAS un quick win.** Voie réaliste : (a) **capture navigateur** de l'XHR interne
-  *quand les résultats s'affichent vraiment* (pas obtenu en sondage — page de recherche-landing) ; ou (b) **Playwright**
-  (rendu + parse DOM). **Effort moyen-élevé → à reporter** derrière les gains faciles ci-dessous. L'annuaire
-  (`jobs_count` par société) reste utilisable comme **signal** ou pour cibler des studios.
+  serveur → **mur anti-bot**. **API jobs interne identifiée** : `GET api.welcometothejungle.com/api/v3/search/jobs`
+  (auth header `x-csrf-token` du cookie `csrf-token`) — le `/count` répond **200** (volumes) mais les **listings**
+  `/search/jobs` → **403 même avec token valide** = **gardés côté serveur (SSR)**. → **PAS un quick win** ; connecteur
+  via **Playwright** (rendu + parse DOM). **Cartographie complète & recette : voir [`RD-WTTJ.md`](RD-WTTJ.md)
+  — source REQUISE, à planifier.** L'annuaire + `/count` (ouverts) servent déjà de signal/ciblage.
 - 🟡 **Gaming Campus / `fr.jobs.game`** — board FR jeu vidéo + esport. `wp-json` **désactivé** (404) → pas
   d'API REST ; mais **JSON-LD `JobPosting`** présent sur les pages → scraping via JSON-LD/HTML (effort moyen).
 - ⚪ **Apec** (cadres) : généraliste, JV minoritaire et redondant → basse priorité.
