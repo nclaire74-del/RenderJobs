@@ -10,6 +10,30 @@ Dernière R&D : **2026-06-02** (vérification web des méthodes d'accès). Méth
 🟢 API/flux officiel · 🟡 backend interrogeable (Algolia/JSON) · 🟠 scraping (HTML public) ·
 🔴 hostile (anti-bot/ToS) · ⚫ ligne rouge (jamais).
 
+### 🔬 R&D 2026-06-02 — méthodes d'accès **sondées en réel** (boards restants)
+
+Sondage HTTP (statut, type, marqueurs SPA/Cloudflare, liens d'offres dans le HTML brut) :
+
+| Site | Méthode réelle constatée | Verdict |
+|---|---|---|
+| **Hitmarker** | Liste rendue en JS, **mais** `sitemap-jobs.xml` (5000 URLs + lastmod) + **JSON-LD JobPosting** par page | ✅ **Fait (ADR-0019)** — sans Playwright |
+| **The Rookies** | **Cloudflare** sur la page jobs + sitemap = portfolios/concours (**pas d'offres**), aucune API | 🔴 **Tier 4** — Playwright + proxies (différé) |
+| **Work With Indies** | HTML **server-rendered**, ~80 liens d'offres dans la page | 🟠 **fetch+cheerio faisable** (bon candidat suivant) |
+| **PixelCareer** | HTML server-rendered, ~23 liens d'offres | 🟠 fetch+cheerio faisable (agrégateur 3D/anim/VFX) |
+| **80 Level Jobs** | **Next.js** (`__NEXT_DATA__`) → données dans le JSON embarqué | 🟠 parsable sans navigateur (lire `__NEXT_DATA__`) |
+| **GameJobs.co** | **Cloudflare** + SPA | 🔴 Playwright |
+| **GrackleHQ** | **Cloudflare** (page-défi 7 ko) | 🔴 Playwright |
+| **Motionographer** | **Cloudflare** (mais HTML servi) | 🟠/🔴 à retenter avec en-têtes navigateur |
+| **AWN (jobs.awn.com)** | **403 Cloudflare** sur `/feed` et `/jobs` | 🔴 Playwright/proxies |
+| **3DVF** | RSS catégorie « offres-emploi » **vide** ce jour ; HTML liste = peu de liens | 🟠 à scraper en HTML (revérifier le flux plus tard) |
+| **Cartoon Brew / ShowbizJobs / vfxjobs** | timeouts / pas de réponse propre au sondage | à re-sonder |
+
+**API remote — toutes en JSON propre 200 (gros gisement FACILE pour grossir la base)** :
+**Himalayas** (`/jobs/api`), **Jobicy** (`/api/v2/remote-jobs?tag=design`), **RemoteOK** (`/api`,
+attribution requise), **Arbeitnow** (`/api/job-board-api`), **The Muse** (`/api/public/jobs?category=
+Design%20and%20UX`, paginé, 2317 résultats Design&UX). → **généralistes** : filtrage niche par tag à la
+source + classifieur strict. **Meilleur ratio volume/effort des étapes restantes** (sans clé, sans scraping).
+
 ---
 
 ## Contexte marché (à garder en tête)
@@ -47,7 +71,8 @@ confirmé comme cible Tier 4 prioritaire (Cloudflare → Playwright+proxies ou s
 ## ⭐ Ordre d'implémentation recommandé (par valeur/effort)
 
 1. ✅ **France Travail** (API) · ✅ **AFJV** (RSS) · ✅ **Games-Career** (RSS) · ✅ **Adzuna** (API) ·
-   ✅ **ATS studios** (Greenhouse/Lever/Ashby) · ✅ **RemoteGameJobs** (scraping léger cheerio) — **faits**.
+   ✅ **ATS studios** (Greenhouse/Lever/Ashby) · ✅ **RemoteGameJobs** (scraping léger cheerio) ·
+   ✅ **Hitmarker** (sitemap + JSON-LD JobPosting, sans Playwright) — **faits** (7 sources, ≈2580 offres).
 2. ⭐ **Connecteur générique ATS** 🟢 (sans clé, ~100 % pertinent) : **6 plateformes** (Greenhouse, Lever,
    Ashby, Workable, Recruitee, Personio) pilotées par `src/config/studios.ts`. **Prochaine grosse étape** —
    meilleur ratio valeur/risque/effort de tout le projet.
@@ -139,7 +164,8 @@ Génériques (filtrage niche nécessaire, par tag/mot-clé à la source + classi
 Pas d'API publique → navigateur automatisé (Playwright). Offres **publiques d'entreprises**.
 
 **Jeu vidéo / esport :**
-- **Hitmarker** (hitmarker.net) 🟠 — **plus gros board gaming/esport mondial**, milliers d'offres/mois. Priorité scraping.
+- **Hitmarker** (hitmarker.net) 🟠 — ✅ **Fait (ADR-0019)** : liste JS mais `sitemap-jobs.xml` (5000 URLs)
+  + **JSON-LD JobPosting** par page → **sans Playwright**. Sans plancher (filet large, NVIDIA & co. cachés).
 - **GrackleHQ** (gracklehq.com) 🟠 — **agrégateur jeu vidéo, 4000+ offres live** ; structure simple → bon candidat scraping/feed.
 - **Remote Game Jobs** (remotegamejobs.com) 🟠 — ✅ **Fait (ADR-0018)** : `src/sources/remote-game-jobs/`,
   HTML server-rendered → **fetch + cheerio** (pas de Playwright). 33 offres, plancher `connexe`, mode remote.
@@ -152,7 +178,10 @@ Pas d'API publique → navigateur automatisé (Playwright). Offres **publiques d
 - **GamesIndustry.biz** / **PocketGamer.biz** 🟡 — sections jobs (RSS probable, cf. Tier 2).
 
 **Art 3D / médias / motion design :**
-- **The Rookies** (therookies.co) 🟠 — **juniors/talents émergents** (cible n°1 du produit). Priorité.
+- **The Rookies** (therookies.co) 🔴 — **juniors/talents émergents** (cible n°1). ⚠️ **R&D 2026-06 : Cloudflare**
+  sur la page jobs + **aucun sitemap/API d'offres** (le site est surtout portfolios/concours). → **Tier 4**
+  (Playwright + proxies résidentiels), **différé**. Alternative juniors en attendant : raccourcis stage/alternance
+  du dashboard + AFJV/Games-Career.
 - **3DVF** (3dvf.com/offres-emploi) 🟠 — **board FR VFX/animation/ciné/jeu, 1000+ offres** ; comble le trou
   français hors jeu vidéo (AFJV = jeu vidéo only). WordPress probable → **chercher `/feed/`**. Haute valeur FR.
 - **PixelCareer** (pixelcareer.com) 🟠 — agrégateur quotidien 3D/anim/VFX/gaming, international.

@@ -8,7 +8,7 @@
  * Non cachée (POST/GET dynamiques) ; la collecte peut être longue (throttle
  * Adzuna) → maxDuration élevé (serveur auto-hébergé, pas de plafond Vercel).
  */
-import { collectToutes } from "@/pipeline/collect";
+import { collecterEtPurger } from "@/pipeline/collect";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -26,7 +26,7 @@ async function lancer(request: Request): Promise<Response> {
   }
 
   const debut = Date.now();
-  const rapports = await collectToutes();
+  const { rapports, purgees } = await collecterEtPurger();
   const dureeMs = Date.now() - debut;
 
   const aEchec = rapports.some((r) => r.erreur);
@@ -35,6 +35,7 @@ async function lancer(request: Request): Promise<Response> {
       ok: !aEchec,
       dureeMs,
       total: rapports.reduce((n, r) => n + r.ecrites, 0),
+      purgees,
       rapports,
     },
     { status: aEchec ? 207 : 200 },

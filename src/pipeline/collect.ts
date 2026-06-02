@@ -28,10 +28,15 @@ import {
   fetchOffres as fetchRemoteGameJobs,
   normalize as normalizeRemoteGameJobs,
 } from "@/sources/remote-game-jobs";
+import {
+  fetchOffres as fetchHitmarker,
+  normalize as normalizeHitmarker,
+} from "@/sources/hitmarker";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
 import { upsertOffres } from "./upsert";
+import { purgeOffresPerimees } from "./purge";
 
 export interface CollectReport {
   source: string;
@@ -154,6 +159,28 @@ export async function collectRemoteGameJobs(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte Hitmarker (board gaming/esport mondial via sitemap + JSON-LD) et enregistre. */
+export async function collectHitmarker(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchHitmarker();
+    // Board gaming/esport **large** (porte des listings d'entreprises entières, ex. NVIDIA santé/IA
+    // hors secteur) → **pas de plancher** : le classifieur strict filtre (comme Adzuna). Le cœur est
+    // piloté par le titre ; le hors-secteur net est caché (cf. décision « tri strict », ADR-0016).
+    const offres: Offre[] = bruts
+      .map(({ raw, url }) => normalizeHitmarker(raw, url))
+      .map((o) => traiter(o));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "hitmarker", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return {
+      source: "hitmarker",
+      recuperees: 0,
+      ecrites: 0,
+      erreur: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -163,5 +190,24 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collectGamesCareer(),
     await collectAts(),
     await collectRemoteGameJobs(),
+    await collectHitmarker(),
   ];
+}
+
+export interface CollectGlobalResult {
+  rapports: CollectReport[];
+  /** Nombre d'offres périmées supprimées après la collecte (null si purge non lancée). */
+  purgees: number | null;
+}
+
+/**
+ * Orchestration complète : collecte **toutes** les sources puis **purge** les offres périmées.
+ * Garde-fou : on ne purge **que si au moins une source a réussi** (sinon une panne réseau globale
+ * — toutes les sources en échec → aucun `recupere_le` rafraîchi — viderait la base). Cf. `purge.ts`.
+ */
+export async function collecterEtPurger(): Promise<CollectGlobalResult> {
+  const rapports = await collectToutes();
+  const auMoinsUnSucces = rapports.some((r) => !r.erreur && r.recuperees > 0);
+  const purgees = auMoinsUnSucces ? await purgeOffresPerimees() : null;
+  return { rapports, purgees };
 }

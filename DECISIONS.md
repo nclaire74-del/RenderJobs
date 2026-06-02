@@ -411,3 +411,48 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   « animateur » FR ambigu) ; (b) pas de pagination serveur (33 = liste courante) ; (c) description =
   liste courte → fetch optionnel de la page de détail plus tard ; (d) **dédup inter-sources** toujours
   ouverte. **Prochains boards** : Hitmarker, GameJobs.co (SPA → Playwright), The Rookies, 3DVF.
+
+## ADR-0019 — Connecteur Hitmarker via sitemap + JSON-LD JobPosting (sans Playwright)
+- **Date** : 2026-06-02.
+- **Contexte** : Hitmarker = **plus gros board gaming/esport mondial** (demande proprio). Sa liste
+  HTML est rendue **en JS** (~8 offres statiques) et **ne pagine pas par URL** → scraping de liste
+  impossible sans navigateur. **R&D (sondage réel)** : deux voies propres existent — (1)
+  `sitemap-jobs.xml` = **5000 URLs d'offres + `<lastmod>`, triées récent→ancien** ; (2) chaque page
+  d'offre porte un **JSON-LD `JobPosting`** (schema.org) complet (titre/entreprise/lieu/type/date/desc).
+- **Décisions** (lead dev) :
+  1. **`src/sources/hitmarker/`** : `fetchOffres({max})` = sitemap (1 req) → N pages les plus
+     récentes (défaut **150**, throttle 250 ms, **résilient** : page en échec/sans JSON-LD ignorée).
+     `extraireSitemap()` (fast-xml-parser) + `parseJobPosting()` (cheerio + **Zod**, tolérant
+     array/objet/@graph) **testables hors-réseau** ; `normalize()` → `Offre` (sourceId = id numérique
+     d'URL ; contrat via `employmentType` ; lieu via `jobLocation.address` ; desc HTML→texte).
+  2. **PAS de plancher `connexe`** (contrairement à AFJV/ATS) : Hitmarker porte des **listings
+     d'entreprises entières** (ex. **NVIDIA** santé/banque/robotique = hors 3D). Comme Adzuna, c'est un
+     **filet large** → le **classifieur strict filtre** (cf. ADR-0016) ; le cœur est piloté par le titre.
+- **Raison** : capter un gros board hostile au scraping **sans Playwright**, via des données
+  **standardisées** (bien plus stables que du CSS), tout en respectant le tri strict.
+- **Conséquence** : `tsc` + `eslint` + **88 tests** verts. Collecte réelle (150 récentes) : **140
+  offres** (10 pages sans JSON-LD ignorées) → **22 cœur / 24 connexe / 94 hors_scope** (NVIDIA &
+  corporate correctement **cachés**). Base ≈ **2581** offres (7 sources). **Points ouverts** : (a) le
+  flux récent du sitemap est **dilué** par les gros posteurs (NVIDIA) → rendement ~30 % pertinent/run
+  (acceptable, s'accumule) ; (b) `validThrough` souvent absent → péremption gérée par la **purge** ;
+  (c) **The Rookies écarté** (Cloudflare + aucun sitemap/API d'offres → Tier 4, Playwright+proxies).
+
+## ADR-0020 — Purge automatique des offres périmées (fraîcheur de la base)
+- **Date** : 2026-06-02.
+- **Contexte** : l'upsert ne supprime jamais → les offres pourvues/expirées s'accumulent (purge faite
+  **à la main** les sessions précédentes). Demande explicite proprio : « purge des offres quand la
+  date est dépassée ». Principe produit « fraîcheur ».
+- **Décisions** (lead dev) :
+  1. **Stratégie universelle, source-agnostique** : toute offre encore présente chez sa source voit
+     son `recupere_le` rafraîchi à chaque collecte (`upsert.ts`). Donc une offre dont le `recupere_le`
+     **n'a pas bougé depuis > `joursMax` jours** n'est plus listée → **morte** → supprimée. Pas besoin
+     de connaître la pagination de chaque source (robuste pour FT plafonné, Adzuna paginé, Hitmarker
+     capé). `joursMax` défaut = **30** (cohérent avec FT `publieeDepuis=31j` / Adzuna `max_days_old=31`).
+  2. **`src/pipeline/peremption.ts`** (pur, testé : `seuilPurge`) + **`src/pipeline/purge.ts`**
+     (`purgeOffresPerimees` → `DELETE WHERE recupere_le < seuil`, retourne le nb supprimé).
+  3. **Orchestration `collecterEtPurger()`** (collect.ts) appelée par la **route cron** et `npm run
+     collect`. **Garde-fou** : ne purge **que si au moins une source a réussi** (sinon une panne réseau
+     globale — aucun `recupere_le` rafraîchi — viderait la base). Réponse cron : champ `purgees`.
+- **Raison** : fraîcheur temps réel automatique, sûre (garde-fou anti-vidage), simple et universelle.
+- **Conséquence** : vérifié en réel — purge à blanc = 0 (tout frais) ; offre injectée à −40 j =
+  supprimée ; offres récentes intactes. 3 tests purs (`seuilPurge`). 88 tests verts au total.
