@@ -70,12 +70,13 @@ UI FR i18n-ready, **public n°1 = juniors**.
 
 ## 🔑 Secrets — dans `~/ClaraAFJV/.env.local` (chmod 600, NON versionné)
 
-Déjà présents : `FRANCE_TRAVAIL_CLIENT_ID`, `FRANCE_TRAVAIL_CLIENT_SECRET` (app « claraefjv »),
-`DATABASE_URL` (port 5434), `CRON_SECRET`, **`ADZUNA_APP_ID` + `ADZUNA_APP_KEY`** (app « 333FM's
-AppDefault », state *live*, ajoutées 2026-06-02 — ont transité par la conversation).
-> ⚠️ Hygiène : les clés FT figurent dans l'historique git initial (commit de bascule) et ont transité
-> par la conversation. Repo privé/auto-hébergé donc risque faible, mais **régénérer les clés FT sur
-> francetravail.io** reste l'option propre si besoin (puis mettre à jour `.env.local`).
+Présents : `FRANCE_TRAVAIL_CLIENT_ID/SECRET`, `DATABASE_URL` (port 5434), `CRON_SECRET`,
+`ADZUNA_APP_ID/KEY`, et optionnel `ALERT_WEBHOOK_URL` (alertes Discord). Liste à jour = `.env.example`.
+> ✅ **Audit hygiène 2026-06-02** : `.env.local` est **gitignoré et non suivi** ; **aucune clé** n'est
+> dans les fichiers suivis **ni dans l'historique git** (le seul `.env*` versionné est `.env.example`,
+> valeurs vides). `CRON_SECRET` **régénéré** cette session. **Seul vecteur résiduel** : les clés FT/Adzuna
+> ont transité par la **conversation** au setup → si besoin de durcir, les **régénérer sur les portails**
+> (francetravail.io / developer.adzuna.com) puis mettre à jour `.env.local` (procédure : `deploy/README.md`).
 
 ## ✅ BLOCAGE LEVÉ — France Travail opérationnel (2026-06-02)
 

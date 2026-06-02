@@ -43,3 +43,17 @@ ALERT_WEBHOOK_URL=https://discord.com/api/webhooks/XXXX/YYYY
 ```
 Le cron le prend en compte automatiquement (chargé via `--env-file=.env.local`). Sans cette variable,
 les alertes restent visibles dans `collect.log` (`grep ⚠️ collect.log`).
+
+## Régénérer les clés API (hygiène avant mise en ligne publique)
+
+Audit (2026-06) : `.env.local` n'est PAS dans git (ni l'historique). Les clés ont seulement transité
+par la conversation de setup. Pour durcir avant une ouverture publique, les régénérer sur les portails :
+
+1. **France Travail** — https://francetravail.io → ton application → régénérer le *client secret* →
+   coller la nouvelle valeur dans `~/ClaraAFJV/.env.local` (`FRANCE_TRAVAIL_CLIENT_SECRET=`).
+2. **Adzuna** — https://developer.adzuna.com → dashboard → régénérer la clé →
+   mettre à jour `ADZUNA_APP_KEY` (et `ADZUNA_APP_ID` si changé) dans `.env.local`.
+3. **CRON_SECRET** — déjà régénéré automatiquement ; pour le refaire :
+   `NEW=$(openssl rand -hex 32); sed -i -E 's|^CRON_SECRET=.*|CRON_SECRET="'$NEW'"|' .env.local`
+4. Après toute modif de `.env.local` : `sudo systemctl restart clara-hub` (le cron, lui, relit le
+   fichier à chaque exécution). Vérifier : `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3002/`.
