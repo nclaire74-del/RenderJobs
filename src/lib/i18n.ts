@@ -70,6 +70,27 @@ export const t = {
     aide: "Le chargement des offres a échoué. Réessaie dans un instant.",
     reessayer: "Réessayer",
   },
+
+  tri: {
+    libelle: "Trier :",
+    fraicheur: "Plus récentes",
+    pourMoi: "Pour moi",
+  },
+
+  profil: {
+    titre: "Mon profil",
+    aide: "Décris ton profil pour voir ta correspondance sur chaque offre et trier « pour moi ». Stocké sur cet appareil, sans compte.",
+    ouvrir: "Mon profil",
+    logiciels: "Logiciels maîtrisés",
+    specialites: "Spécialités visées",
+    experience: "Niveau",
+    pays: "Lieu souhaité",
+    mode: "Mode de travail",
+    enregistrer: "Enregistrer",
+    effacer: "Effacer",
+    indefini: "—",
+    correspondance: "correspondance",
+  },
 } as const;
 
 /** Libellés des contrats. */

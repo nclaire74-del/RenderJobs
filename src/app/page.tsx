@@ -6,6 +6,7 @@
  * `offres-repo`. Aucun compte, aucune friction : on arrive, on voit le flux.
  */
 import Link from "next/link";
+import { cookies } from "next/headers";
 import {
   listerOffres,
   compterParVue,
@@ -13,9 +14,12 @@ import {
   listerLogiciels,
   listerSpecialites,
   VUES,
+  TRIS,
   type FiltreOffres,
+  type Tri,
   type Vue,
 } from "@/lib/offres-repo";
+import { lireProfil, profilRempli } from "@/domain/profil";
 import {
   CONTRATS,
   EXPERIENCES,
@@ -28,6 +32,8 @@ import { construireHref, premier, type ParamsBruts } from "@/lib/url";
 import { Onglets } from "@/components/onglets";
 import { BarreFiltres } from "@/components/barre-filtres";
 import { OffreCarte } from "@/components/offre-carte";
+import { ProfilPanel } from "@/components/profil-panel";
+import { TriBar } from "@/components/tri-bar";
 import { t } from "@/lib/i18n";
 
 /** Transforme les `searchParams` bruts en filtres validés (valeurs inconnues ignorées). */
@@ -50,6 +56,9 @@ function lireFiltre(params: ParamsBruts): FiltreOffres {
     ? (modeBrut as ModeTravail)
     : undefined;
 
+  const triBrut = premier(params.tri);
+  const tri = TRIS.includes(triBrut as Tri) ? (triBrut as Tri) : undefined;
+
   const pageBrute = Number.parseInt(premier(params.page) ?? "1", 10);
   const page = Number.isFinite(pageBrute) && pageBrute > 0 ? pageBrute : 1;
 
@@ -63,6 +72,7 @@ function lireFiltre(params: ParamsBruts): FiltreOffres {
     specialite: premier(params.specialite),
     mode,
     q: premier(params.q),
+    tri,
     page,
   };
 }
@@ -72,10 +82,15 @@ export default async function Dashboard({
 }: PageProps<"/">) {
   const filtre = lireFiltre(await searchParams);
 
+  // Profil (cookie miroir du localStorage) — sert au tri « pour moi » et au score sur chaque carte.
+  const cookieStore = await cookies();
+  const profil = lireProfil(cookieStore.get("profil")?.value);
+  const aProfil = profil !== null && profilRempli(profil);
+
   // Requêtes parallèles (Promise.all — cf. docs Next « parallel data fetching »).
   const [{ offres, page, aPageSuivante }, comptes, pays, logiciels, specialites] =
     await Promise.all([
-      listerOffres(filtre),
+      listerOffres(filtre, profil),
       compterParVue(filtre),
       listerPays(filtre),
       listerLogiciels(filtre),
@@ -104,6 +119,16 @@ export default async function Dashboard({
         />
       </div>
 
+      <div className="mt-4">
+        <ProfilPanel
+          logiciels={logiciels.map((l) => l.valeur)}
+          specialites={specialites.map((s) => s.valeur)}
+          pays={pays.map((p) => p.pays)}
+        />
+      </div>
+
+      {aProfil ? <TriBar filtre={filtre} /> : null}
+
       {offres.length === 0 ? (
         <div className="mt-12 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
           <p className="text-zinc-300">{t.liste.aucune}</p>
@@ -113,7 +138,7 @@ export default async function Dashboard({
         <ul className="mt-5 space-y-3">
           {offres.map((offre) => (
             <li key={offre.id}>
-              <OffreCarte offre={offre} />
+              <OffreCarte offre={offre} profil={aProfil ? profil : null} />
             </li>
           ))}
         </ul>

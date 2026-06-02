@@ -11,6 +11,8 @@
  */
 import type { OffreRow } from "@/db/schema";
 import type { Contrat, Experience, ModeTravail } from "@/domain/offre";
+import type { Profil } from "@/domain/profil";
+import { scorer } from "@/lib/scoring";
 import { Etiquette } from "@/components/etiquette";
 import {
   libelleContrat,
@@ -32,7 +34,14 @@ function ligneLieu(ville: string | null, pays: string | null): string {
   return parts.length ? parts.join(" · ") : t.offre.paysInconnu;
 }
 
-export function OffreCarte({ offre }: { offre: OffreRow }) {
+export function OffreCarte({
+  offre,
+  profil = null,
+}: {
+  offre: OffreRow;
+  profil?: Profil | null;
+}) {
+  const corr = profil ? scorer(profil, offre) : null;
   const aEtiquettes =
     offre.logiciels.length > 0 ||
     offre.specialites.length > 0 ||
@@ -62,12 +71,31 @@ export function OffreCarte({ offre }: { offre: OffreRow }) {
             {ligneLieu(offre.ville, offre.pays)}
           </p>
         </div>
-        {offre.salaire ? (
-          <span className="shrink-0 whitespace-nowrap text-sm font-medium text-emerald-400">
-            {offre.salaire}
-          </span>
-        ) : null}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {offre.salaire ? (
+            <span className="whitespace-nowrap text-sm font-medium text-emerald-400">
+              {offre.salaire}
+            </span>
+          ) : null}
+          {corr && corr.sur > 0 ? (
+            <span
+              className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${
+                corr.score > 0
+                  ? "bg-sky-950 text-sky-300 ring-sky-700"
+                  : "bg-zinc-800 text-zinc-400 ring-zinc-700"
+              }`}
+              title={corr.raisons.join(" · ")}
+            >
+              ★ {corr.score}/{corr.sur} {t.profil.correspondance}
+            </span>
+          ) : null}
+        </div>
       </div>
+
+      {/* Raisons de la correspondance (pourquoi cette offre te correspond) */}
+      {corr && corr.raisons.length > 0 ? (
+        <p className="mt-2 text-xs text-sky-300/80">{corr.raisons.join(" · ")}</p>
+      ) : null}
 
       {/* Étiquettes enrichies */}
       <div className="mt-3 flex flex-wrap gap-1.5">

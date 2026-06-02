@@ -32,6 +32,12 @@ import type {
   ModeTravail,
   Pertinence,
 } from "@/domain/offre";
+import { scorer } from "@/lib/scoring";
+import { profilRempli, type Profil } from "@/domain/profil";
+
+/** Ordre d'affichage du flux : par fraîcheur (défaut) ou par pertinence pour le profil. */
+export type Tri = "fraicheur" | "pour-moi";
+export const TRIS: readonly Tri[] = ["fraicheur", "pour-moi"] as const;
 
 /**
  * **Clé de regroupement pour la déduplication** : la signature `cle_dedup` si présente, sinon
@@ -74,6 +80,8 @@ export interface FiltreOffres {
   mode?: ModeTravail;
   /** Recherche plein-texte simple (titre / studio / description). */
   q?: string;
+  /** Ordre d'affichage (défaut « fraicheur »). « pour-moi » nécessite un profil. */
+  tri?: Tri;
   /** Page 1-indexée. */
   page?: number;
 }
@@ -128,8 +136,17 @@ export interface PageOffres {
   aPageSuivante: boolean;
 }
 
-/** Liste les offres d'une vue, **dédupliquées inter-sources**, triées par fraîcheur, paginées. */
-export async function listerOffres(f: FiltreOffres): Promise<PageOffres> {
+/**
+ * Liste les offres d'une vue, **dédupliquées inter-sources**, paginées.
+ * - tri par **fraîcheur** (défaut) : pagination SQL (limit/offset).
+ * - tri **« pour moi »** (si `profil` fourni) : on récupère l'ensemble dédupliqué, on score chaque
+ *   offre (intersection profil↔offre, cf. `scoring.ts`), on trie par score puis fraîcheur, on pagine
+ *   en mémoire. Volume par vue (~700–1600) → coût négligeable, et la pagination reste cohérente.
+ */
+export async function listerOffres(
+  f: FiltreOffres,
+  profil?: Profil | null,
+): Promise<PageOffres> {
   const page = Math.max(1, f.page ?? 1);
   const where = and(eq(offres.pertinence, f.vue), ...conditionsCommunes(f));
 
@@ -148,7 +165,29 @@ export async function listerOffres(f: FiltreOffres): Promise<PageOffres> {
       .where(where),
   );
 
-  // On demande TAILLE_PAGE + 1 pour savoir s'il existe une page suivante.
+  const pourMoi = f.tri === "pour-moi" && profil && profilRempli(profil);
+
+  if (pourMoi) {
+    // Ensemble dédupliqué complet, trié/paginé en mémoire par pertinence pour le profil.
+    const toutes = await db.with(classees).select().from(classees).where(eq(classees.rn, 1));
+    const avecScore = toutes
+      .map((o) => ({ o, c: scorer(profil, o) }))
+      .sort((a, b) => {
+        if (b.c.score !== a.c.score) return b.c.score - a.c.score;
+        const fa = (a.o.publieLe ?? a.o.recupereLe).getTime();
+        const fb = (b.o.publieLe ?? b.o.recupereLe).getTime();
+        return fb - fa;
+      });
+    const debut = (page - 1) * TAILLE_PAGE;
+    const tranche = avecScore.slice(debut, debut + TAILLE_PAGE);
+    return {
+      offres: tranche.map((x) => x.o),
+      page,
+      aPageSuivante: avecScore.length > debut + TAILLE_PAGE,
+    };
+  }
+
+  // Tri par fraîcheur (défaut) — pagination SQL. TAILLE_PAGE + 1 pour détecter la page suivante.
   const lignes = await db
     .with(classees)
     .select()

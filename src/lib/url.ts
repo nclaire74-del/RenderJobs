@@ -34,6 +34,7 @@ export function construireHref(
   if (f.specialite) params.set("specialite", f.specialite);
   if (f.mode) params.set("mode", f.mode);
   if (f.q) params.set("q", f.q);
+  if (f.tri && f.tri !== "fraicheur") params.set("tri", f.tri);
   if (f.page && f.page > 1) params.set("page", String(f.page));
 
   const qs = params.toString();
