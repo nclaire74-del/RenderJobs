@@ -44,6 +44,18 @@ import {
   fetchOffres as fetchRemoteOk,
   normalize as normalizeRemoteOk,
 } from "@/sources/remoteok";
+import {
+  fetchOffres as fetchWorkWithIndies,
+  normalize as normalizeWorkWithIndies,
+} from "@/sources/work-with-indies";
+import {
+  fetchOffres as fetchPixelCareer,
+  normalize as normalizePixelCareer,
+} from "@/sources/pixelcareer";
+import {
+  fetchOffres as fetch80Level,
+  normalize as normalize80Level,
+} from "@/sources/80-level";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
@@ -251,6 +263,48 @@ export async function collectRemoteOk(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte Work With Indies (board jeu indé via RSS) et enregistre. */
+export async function collectWorkWithIndies(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchWorkWithIndies();
+    const offres: Offre[] = bruts
+      .map(normalizeWorkWithIndies)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "work-with-indies", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "work-with-indies", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Lance la collecte PixelCareer (agrégateur 3D/anim/VFX via RSS) et enregistre. */
+export async function collectPixelCareer(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchPixelCareer();
+    const offres: Offre[] = bruts
+      .map(normalizePixelCareer)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "pixelcareer", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "pixelcareer", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Lance la collecte 80 Level (board art/tech jeu via JSON embarqué) et enregistre. */
+export async function collect80Level(): Promise<CollectReport> {
+  try {
+    const bruts = await fetch80Level();
+    const offres: Offre[] = bruts
+      .map(normalize80Level)
+      .map((o) => traiter(o, { plancher: "connexe" }));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "80-level", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "80-level", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -264,6 +318,9 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collectGameJobsCo(),
     await collectHelloWork(),
     await collectRemoteOk(),
+    await collectWorkWithIndies(),
+    await collectPixelCareer(),
+    await collect80Level(),
   ];
 }
 
@@ -287,6 +344,9 @@ export async function collectLeger(): Promise<CollectReport[]> {
     await collectRemoteOk(),
     await collectRemoteGameJobs(),
     await collectAts(),
+    await collectWorkWithIndies(),
+    await collectPixelCareer(),
+    await collect80Level(),
   ];
 }
 

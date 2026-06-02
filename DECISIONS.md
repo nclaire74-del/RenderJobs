@@ -502,3 +502,21 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   incluse). **Limite assumée** : latence ≤ 20 min (léger) / 2 h (complet), pas l'instantané strict.
   **Évolutions** : affiner les cadences si une source rate-limite ; collecte incrémentale Hitmarker via
   `<lastmod>` du sitemap (éviter de re-fetch 150 pages à chaque run) ; webhooks si une source en offre.
+
+## ADR-0023 — +3 sources niche 3D/jeu : Work With Indies (RSS), PixelCareer (RSS), 80 Level (JSON)
+- **Date** : 2026-06-02.
+- **Contexte** : poursuite des gains faciles, mais **ciblés 3D/jeu** (vs RemoteOK/The Muse généralistes).
+  R&D : Work With Indies expose un **RSS** (`careers/rss.xml`, 100), PixelCareer un **RSS jobs**
+  (`/jobs/feed/`), 80 Level un **JSON embarqué** (`__NEXT_DATA__`, ~10 récents/70). The Muse écarté
+  (catégorie « Design & UX » = UX généraliste, faible densité 3D).
+- **Décisions** (lead dev) : 3 connecteurs au contrat habituel, tous **boards curés** → plancher
+  `connexe` ; tous **légers** (1 requête) → ajoutés à `collectLeger()` (cron 20 min).
+  1. `src/sources/work-with-indies/` (RSS) : titre « <Studio> is hiring a <Rôle>… » → `lireTitre`
+     (coupe le préambule de lieu) ; tags dans la description.
+  2. `src/sources/pixelcareer/` (RSS) : titre = rôle ; studio non structuré (dans le texte → `null`).
+  3. `src/sources/80-level/` (JSON `__NEXT_DATA__` via cheerio) : `company.title`→studio, city/country,
+     tags+desc, `slug`→URL `80.lv/jobs/{slug}`.
+  - **Fix** : `sourceId` ne doit retirer que query/fragment + slash final (pas couper au 1er slash) →
+    corrigé pour les chemins `/careers/{slug}` et `/jobs/{slug}/`.
+- **Conséquence** : `tsc`+`eslint`+**113 tests** (+12). Réel : WWI **100** (41 cœur/59 connexe),
+  PixelCareer **6** (5 cœur), 80 Level **10** (4 cœur) — 0 rejet (plancher). **13 sources**, base ≈ **3127**.

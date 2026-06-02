@@ -4,10 +4,10 @@
 > Mis à jour avant chaque `/clear`. Format court et opérationnel.
 
 **Dernière mise à jour** : 2026-06-02 (session : **+3 sources gains-faciles + TEMPS RÉEL (cron)** — ADR-0021/0022)
-**Phase en cours** : **Phase 1 (MVP)**. **10 sources vivantes** : France Travail (API) · AFJV (RSS) ·
+**Phase en cours** : **Phase 1 (MVP)**. **13 sources vivantes** : France Travail (API) · AFJV (RSS) ·
 Adzuna (API) · Games-Career (RSS) · ATS studios (GH/Lever/Ashby) · RemoteGameJobs (cheerio) ·
-Hitmarker (sitemap+JSON-LD) · **🆕 GameJobs.co** (Atom) · **🆕 RemoteOK** (API remote) ·
-**🆕 HelloWork** (recherche FR + JSON-LD ; salaire €, ignore les expirées).
+Hitmarker (sitemap+JSON-LD) · GameJobs.co (Atom) · RemoteOK (API) · HelloWork (recherche FR + JSON-LD) ·
+**🆕 Work With Indies** (RSS indé) · **🆕 PixelCareer** (RSS 3D/anim) · **🆕 80 Level** (JSON embarqué).
 **🔄 TEMPS RÉEL (ADR-0022)** : **cron système 2 vitesses** — léger **20 min** (AFJV, Games-Career,
 GameJobs.co, RemoteOK, RemoteGameJobs, ATS) / complet **2 h** (+ FT, Adzuna, Hitmarker, HelloWork).
 Dashboard = Server Component **dynamique** (lit la DB en direct) → l'offre apparaît dès qu'elle est en base.
