@@ -283,3 +283,35 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   **Point ouvert** : sur un board curé, le vocabulaire cœur trouvé dans la *description* peut **sur-promouvoir**
   en `coeur` un rôle support (ex. « Monetization Manager » dont la JD cite « game design ») — sens sûr (R-1),
   à surveiller au dashboard ; raffinement possible = exiger le signal cœur dans le **titre** pour ces sources.
+
+## ADR-0015 — Dashboard MVP (Phase 1) : flux cœur/connexes, filtres URL, attribution + route cron
+
+- **Date** : 2026-06-02
+- **Contexte** : 1409 offres en base, pipeline livré, mais **aucune UI** (app = template Create-Next-App).
+  Priorité n°1 du HANDOFF : rendre le produit **visible et testable** par la proprio (UC-1/UC-2, `PRODUIT.md`).
+- **Décisions** (choix techniques du lead dev) :
+  1. **Server Components + accès DB direct** (Next 16, « fetching data with an ORM ») : la page `/` est
+     un Server Component `async` qui lit `searchParams` (Promise en Next 16) et interroge Postgres via une
+     **couche `src/lib/offres-repo.ts`** (Drizzle). Pas d'API REST intermédiaire pour la lecture, pas de JS
+     client → rendu simple, rapide, dynamique.
+  2. **État dans l'URL** (UC-2 partageable) : filtres = `searchParams` (`vue`, `pays`, `contrat`,
+     `experience`, `q`, `page`). Barre de filtres = simple `<form method="get">` (zéro JS client) ;
+     onglets/pagination/raccourcis = liens (`src/lib/url.ts` construit les hrefs).
+  3. **2 onglets** : `coeur` (défaut) + `connexe` ; **`hors_scope` jamais affiché** (R-1). Tri par fraîcheur
+     `publie_le desc nulls last` puis `recupere_le`. Pagination par tranches de **60**.
+  4. **Attribution** (CLAUDE.md §6) : chaque carte affiche la **source** + lien direct `target=_blank
+     rel=noopener nofollow` vers l'annonce. Étiquettes enrichies mises en avant (logiciels = ton distinct).
+  5. **Cible juniors** (persona n°1) : raccourcis stage/alternance/junior dans la barre de filtres.
+  6. **i18n-ready** (R-4) : tous les libellés dans `src/lib/i18n.ts` (locale `fr`), aucun texte en dur dans
+     les composants → ajout d'`en` ultérieur sans refonte. Thème **sombre** (ADR-0002).
+  7. **Route cron** `POST|GET /api/cron/collect` protégée par `Authorization: Bearer ${CRON_SECRET}`
+     (convention Vercel Cron) → `collectToutes()`. 401 sans secret (vérifié en réel).
+- **Raison** : livrer vite un MVP utilisable et conforme aux règles produit, sans dette (pas de client lourd,
+  URL partageables, textes externalisés).
+- **Conséquence** : `tsc` + `eslint` + **build** + **57 tests** verts. Rendu vérifié en réel (serveur prod sur
+  port temporaire) : flux cœur/connexes, filtres pays/contrat (France+stage = 17), recherche `q`, pagination,
+  badge d'onglet (251 cœur), cron 401 sans secret. **Points ouverts** : (a) **faux positifs de classification**
+  visibles dans le flux cœur (« Substance Use Counselor » promu via le logiciel *Substance* ; « Chef de projet
+  SI » marqué vfx/animation) → à corriger côté `enrichir`/`classer` (frontières de mots, ancrage titre) ;
+  (b) pas encore de **dédup inter-sources** (ADR-0013) ni de **péremption** des offres mortes ; (c) détail
+  d'offre = lien externe uniquement (pas de page interne — volontaire pour le MVP, attribution directe).

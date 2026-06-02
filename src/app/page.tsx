@@ -1,65 +1,130 @@
-import Image from "next/image";
+/**
+ * Dashboard — le cœur du produit (UC-1 « scan rapide » + UC-2 « chasse ciblée »).
+ *
+ * Server Component asynchrone : il lit les `searchParams` (Promise en Next 16),
+ * en dérive les filtres, puis interroge Postgres directement via la couche
+ * `offres-repo`. Aucun compte, aucune friction : on arrive, on voit le flux.
+ */
+import Link from "next/link";
+import {
+  listerOffres,
+  compterParVue,
+  listerPays,
+  VUES,
+  type FiltreOffres,
+  type Vue,
+} from "@/lib/offres-repo";
+import { CONTRATS, EXPERIENCES, type Contrat, type Experience } from "@/domain/offre";
+import { construireHref, premier, type ParamsBruts } from "@/lib/url";
+import { Onglets } from "@/components/onglets";
+import { BarreFiltres } from "@/components/barre-filtres";
+import { OffreCarte } from "@/components/offre-carte";
+import { t } from "@/lib/i18n";
 
-export default function Home() {
+/** Transforme les `searchParams` bruts en filtres validés (valeurs inconnues ignorées). */
+function lireFiltre(params: ParamsBruts): FiltreOffres {
+  const vueBrute = premier(params.vue);
+  const vue: Vue = VUES.includes(vueBrute as Vue) ? (vueBrute as Vue) : "coeur";
+
+  const contratBrut = premier(params.contrat);
+  const contrat = CONTRATS.includes(contratBrut as Contrat)
+    ? (contratBrut as Contrat)
+    : undefined;
+
+  const expBrute = premier(params.experience);
+  const experience = EXPERIENCES.includes(expBrute as Experience)
+    ? (expBrute as Experience)
+    : undefined;
+
+  const pageBrute = Number.parseInt(premier(params.page) ?? "1", 10);
+  const page = Number.isFinite(pageBrute) && pageBrute > 0 ? pageBrute : 1;
+
+  return {
+    vue,
+    pays: premier(params.pays),
+    contrat,
+    experience,
+    q: premier(params.q),
+    page,
+  };
+}
+
+export default async function Dashboard({
+  searchParams,
+}: PageProps<"/">) {
+  const filtre = lireFiltre(await searchParams);
+
+  // Requêtes parallèles (Promise.all — cf. docs Next « parallel data fetching »).
+  const [{ offres, page, aPageSuivante }, comptes, pays] = await Promise.all([
+    listerOffres(filtre),
+    compterParVue(filtre),
+    listerPays(filtre.vue),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
+          {t.titreApp}
+        </h1>
+        <p className="mt-1 text-sm text-zinc-400">{t.sousTitre}</p>
+      </header>
+
+      <Onglets filtre={filtre} comptes={comptes} />
+
+      <p className="mt-3 text-sm text-zinc-500">{t.vueAide[filtre.vue]}</p>
+
+      <div className="mt-4">
+        <BarreFiltres filtre={filtre} pays={pays} />
+      </div>
+
+      {offres.length === 0 ? (
+        <div className="mt-12 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
+          <p className="text-zinc-300">{t.liste.aucune}</p>
+          <p className="mt-1 text-sm text-zinc-500">{t.liste.aucuneAide}</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      ) : (
+        <ul className="mt-5 space-y-3">
+          {offres.map((offre) => (
+            <li key={offre.id}>
+              <OffreCarte offre={offre} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Pagination */}
+      {offres.length > 0 ? (
+        <nav className="mt-8 flex items-center justify-between border-t border-zinc-800 pt-4 text-sm">
+          {page > 1 ? (
+            <Link
+              href={construireHref(filtre, { page: page - 1 })}
+              className="text-zinc-300 hover:text-sky-400 hover:underline"
+            >
+              {t.liste.pagePrecedente}
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-zinc-500">
+            {t.liste.page} {page}
+          </span>
+          {aPageSuivante ? (
+            <Link
+              href={construireHref(filtre, { page: page + 1 })}
+              className="text-zinc-300 hover:text-sky-400 hover:underline"
+            >
+              {t.liste.pageSuivante}
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      ) : null}
+
+      <footer className="mt-12 border-t border-zinc-800 pt-6 text-center text-xs text-zinc-600">
+        {t.pied}
+      </footer>
     </div>
   );
 }

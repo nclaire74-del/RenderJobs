@@ -3,13 +3,15 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. Format court et opérationnel.
 
-**Dernière mise à jour** : 2026-06-02 (session : Games-Career + R&D ATS + **recensement sources + checkpoint git**)
-**Phase en cours** : Phase 0 → Phase 1. **4 sources vivantes** : **France Travail** (API, ROME) +
+**Dernière mise à jour** : 2026-06-02 (session : **DASHBOARD MVP livré** — ADR-0015)
+**Phase en cours** : **Phase 1 (MVP)**. **4 sources vivantes** : **France Travail** (API, ROME) +
 **AFJV** (RSS, jeu vidéo FR) + **Adzuna** (API, ~20 pays) + **Games-Career** (RSS, jeu vidéo EU/EN).
 **Pipeline pertinence + enrichissement LIVRÉ** (ADR-0011) ; **plancher de pertinence par source** (ADR-0012).
-Base ≈ **1409 offres** (FT 215 / AFJV 89 / Adzuna 1094 / Games-Career 11 ; compteurs ±, les flux bougent).
-Reste à faire : **dashboard** (flux cœur + onglet connexes), **connecteur générique ATS** (Greenhouse/Lever/
-Ashby — liste-amorce ~24 studios vérifiée, `SOURCES.md` Tier 1bis), puis scraping (Hitmarker, The Rookies, ArtStation).
+**Dashboard LIVRÉ** (ADR-0015) : flux cœur + onglet connexes, filtres URL (pays/contrat/niveau/recherche),
+raccourcis juniors, attribution, route cron protégée. Base ≈ **1409 offres** (251 cœur / 1083 connexe / 75 rejet).
+Reste à faire : **connecteur générique ATS** (Greenhouse/Lever/Ashby — liste-amorce ~24 studios vérifiée,
+`SOURCES.md` Tier 1bis), puis scraping (Hitmarker, The Rookies, ArtStation). **À corriger aussi** : faux
+positifs de classification repérés au dashboard (cf. ▶️ action 0).
 
 **✅ État git (reprise propre)** : tout est **commité**, arbre **propre**. Derniers commits sur `master` :
 `12bed44` (recensement sources) · `fc6dc85` (checkpoint : pipeline + 4 connecteurs). Vérifié au vert avant
@@ -109,6 +111,23 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
 - **Vérifié en réel** : recollecte → 12/157/45 ; hors_scope = bruit pur (BTP, mécanique/CAO indus,
   impression 3D, escape game, FPGA, dev web) ; **aucun graphiste/infographiste/animateur rejeté**.
 
+## ✅ Dashboard MVP (2026-06-02, ADR-0015)
+
+- **Page `/`** (`src/app/page.tsx`) : Server Component `async`, lit `searchParams` (Promise en Next 16),
+  interroge Postgres via **`src/lib/offres-repo.ts`** (Drizzle). Onglets **cœur** (défaut) / **connexes** ;
+  `hors_scope` jamais montré. Tri fraîcheur (`publie_le` desc nulls last → `recupere_le`). Pagination 60/page.
+- **Filtres dans l'URL** (partageable) : `vue`/`pays`/`contrat`/`experience`/`q`/`page`. Barre = `<form method=get>`
+  (zéro JS client) ; helpers d'URL dans `src/lib/url.ts`. **Raccourcis juniors** (stage/alternance/junior).
+- **Composants** : `src/components/{offre-carte,onglets,barre-filtres,etiquette}.tsx`. **Attribution** sur chaque
+  carte (source + lien direct). **i18n-ready** : libellés dans `src/lib/i18n.ts` (locale `fr`), rien en dur. Thème sombre.
+- **Route cron** `src/app/api/cron/collect/route.ts` : `GET|POST`, protégée `Authorization: Bearer $CRON_SECRET`
+  → `collectToutes()`. **Vérifié réel** : 401 sans secret ; rendu OK (filtres, recherche, pagination, badges).
+- ⚠️ **Faux positifs de classification vus dans le flux cœur** (à corriger côté pipeline, pas le dashboard) :
+  « Substance Use Counselor » promu cœur via le logiciel *Substance* ; « Chef de projet SI » étiqueté vfx/animation.
+  → renforcer les frontières de mots / ancrer le signal cœur sur le **titre** (cf. ADR-0011/0014/0015 points ouverts).
+- ▶️ **Tester depuis Windows** : `http://192.168.1.175:3002` (port 3002 occupé pendant la session par un autre
+  serveur — relancer `npm run dev` proprement). Note : le `npm run start` lancé en session n'a pas pu prendre 3002.
+
 ## ✅ Fait à ce jour
 
 - **Couche données (Drizzle + pg)** : `drizzle.config.ts`, `src/db/schema.ts` (table `offres`,
@@ -135,16 +154,14 @@ a désormais **toutes les API FT activées** (R&D faite, cf. mémoire `france-tr
 - PostgreSQL installé + base/rôle créés + `.env.local` rempli et testé.
 - Docs : `CLAUDE.md`, `DECISIONS.md`, `SOURCES.md` (carte des sources R&D), `README.md`.
 
-## ▶️ Prochaines actions (dans l'ordre — RÉORDONNÉ par ADR-0009)
+## ▶️ Prochaines actions (dans l'ordre — RÉORDONNÉ après dashboard livré)
 
-1. **Dashboard (Phase 1, priorité haute)** : lire `offres` — **flux `coeur`** (tri `publie_le` desc,
-   fallback `recupere_le`) + **onglet « connexes »** ; `hors_scope` masqué. Carte d'offre avec
-   **attribution** (source + lien). **Filtre pays** + défauts juniors (mise en avant stage/alternance/
-   junior). Afficher les étiquettes enrichies (logiciels/spécialités/niveau). UI **i18n-ready**.
-   Route API `/api/cron/collect` protégée par `CRON_SECRET`. ⚠️ **Lire `node_modules/next/dist/docs/`
-   avant** (Next 16 breaking changes).
-   - ~~`pertinence`/`langue` au modèle~~ ✅ **FAIT (ADR-0011)**. ~~Classifieur + enrichissement~~ ✅ **FAIT**.
-2. **Connecteur générique ATS** (🟢 sans clé, ~100 % pertinent — **gros déblocage R&D ADR-0014**) :
+0. **Corriger les faux positifs de classification** (rapide, fort impact sur la confiance du flux cœur) :
+   `src/pipeline/enrichir.ts` détecte « Substance » (logiciel Adobe) dans « **Substance** Use Counselor »,
+   et des spécialités vfx/animation sur des rôles non-artistiques. Pistes : frontières de mots plus strictes,
+   exiger un contexte, ou ancrer le signal `coeur` sur le **titre** plutôt que le boilerplate de description.
+   Couvrir par des tests (`tests/pipeline/`). ~~Dashboard~~ ✅ **FAIT (ADR-0015)**.
+1. **Connecteur générique ATS** (🟢 sans clé, ~100 % pertinent — **gros déblocage R&D ADR-0014**) :
    Greenhouse/Lever/Ashby exposent les offres par studio. Bâtir 1 connecteur générique + `src/config/studios.ts`.
    **Liste-amorce de ~24 studios VÉRIFIÉE en réel (2026-06-02)** dans `SOURCES.md` Tier 1bis (Roblox 252,
    Scopely 202, Riot 185, Epic 124, Rockstar 79, Supercell 46, Voodoo 123, thatgamecompany 25…). Greenhouse
