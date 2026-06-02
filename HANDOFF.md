@@ -3,12 +3,13 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. **Court et opérationnel** — l'historique détaillé est dans `DECISIONS.md` (ADR).
 
-**Dernière mise à jour** : 2026-06-02 — fin du **chantier sourcing** (sites durs faits). Phase **1 (MVP)**.
+**Dernière mise à jour** : 2026-06-02 — **CHECKPOINT mono-lead-dev** (tag `v0.1-checkpoint`) : filtres
+différenciants + enrichissement élargi + cron express 5 min + audit multi-agents (7 fixes appliqués). Phase **1 (MVP)**.
 
 ## 🎯 État en une page
 
 - **19 sources vivantes** collectées en continu, base **propre** (~2200 offres : **cœur + connexes uniquement**,
-  les `hors_scope` ne sont plus stockées — ADR-0028). Tout est **commité**, arbre **propre**, `tsc`+`eslint`+**~142 tests** verts.
+  les `hors_scope` ne sont plus stockées — ADR-0028). Tout est **commité**, arbre **propre**, `tsc`+`eslint`+**151 tests** verts.
 - **Sources** (cf. `SOURCES.md` pour le détail/méthode) :
   - **API / flux** : France Travail, Adzuna, AFJV (RSS), Games-Career (RSS), GameJobs.co (Atom),
     RemoteOK, Jobicy, Remotive (API remote), **ArtStation** (API publique → 54 cœur 3D), ATS studios (GH/Lever/Ashby).
@@ -37,8 +38,8 @@
   ufw : 3002 ouvert au LAN. MCP Chrome (PC Windows) → viser l'IP serveur. Détails `CLAUDE.md` §5bis.
 - **DB** : **PostgreSQL natif, PORT 5434** (⚠️ 5432/5433 = conteneurs Docker d'AUTRES projets, ne pas toucher).
   Rôle `hub` / base `hub_emploi`. `DATABASE_URL` dans `.env.local`.
-- ⚠️ **2 Claude travaillent en parallèle** sur ce repo (coordination via ce HANDOFF + commits). Fichier `RD-SCRAPING.md`
-  (non suivi) appartient à l'autre Claude — ne pas le committer.
+- **Mono-lead-dev** depuis le checkpoint 2026-06-02 (ADR-0033) : un seul Claude pilote tout (code + R&D).
+  Les fichiers `RD-*.md` (R&D de l'ancien binôme) sont **intégrés au dépôt** et désormais à consolider librement.
 - Commits **locaux** (pas de remote configuré).
 
 ## 🔑 Secrets — `~/ClaraAFJV/.env.local` (chmod 600, gitignoré)

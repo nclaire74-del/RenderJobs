@@ -644,3 +644,48 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   si Indeed se met à bloquer (passer alors par proxies, cf. ADR-0026). **LinkedIn reste exclu** (juridique/RGPD).
 - **Conséquence** : `tsc`+`eslint`+**142 tests** (+3), build Next OK. Réel : 54 ramenées → **26 écrites**
   (17 cœur / 9 connexe ; 28 pubs/hors-sujet filtrées) — dont alternance/stage FR (cible juniors). **19 sources.**
+
+## ADR-0031 — Filtres différenciants (logiciel / spécialité / mode) + enrichissement élargi
+
+- **Date** : 2026-06-02
+- **Contexte** : la vision promet « des filtres que personne d'autre n'a » (logiciel, spécialité, niveau).
+  L'enrichissement calculait déjà `logiciels[]`/`specialites[]`/`modeTravail`, mais le dashboard ne filtrait
+  que par pays/contrat/niveau/recherche → le différenciateur central était calculé mais invisible. Audit data :
+  ~30 % des offres sortaient **sans aucune étiquette**.
+- **Décision** : (1) exposer 3 filtres — **logiciel**, **spécialité**, **mode de travail** — peuplés par des
+  **facettes** (`listerLogiciels`/`listerSpecialites`, `unnest` + comptage) ; containment `text[] @>` côté repo,
+  état porté par l'URL. (2) **Élargir le lexique des spécialités** de +10 (programmation, technical-art, ui-ux,
+  audio, qa, narration, production, graphisme, illustration, generaliste-3d) + fix « level designer ».
+- **Raison** : c'est le cœur de la proposition de valeur ; l'enrichissement annotait déjà, il fallait l'exploiter.
+  Ajouts de spécialités **sûrs** : `classer.ts` n'utilise PAS `specialites` (aucun reclassement).
+- **Conséquence** : offres sans étiquette **678 → 382**. Script **`npm run reenrichir [-- --apply]`** (dry-run par
+  défaut) pour ré-étiqueter la base à chaque évolution du lexique. Spécialités libellées FR.
+
+## ADR-0032 — Collecte « express » 5 min (temps réel resserré)
+
+- **Date** : 2026-06-02
+- **Contexte** : contrainte produit — une offre publiée sur AFJV doit apparaître au plus vite. Le cron léger
+  (20 min) laissait jusqu'à 20 min de latence.
+- **Options** : (a) accélérer le cron léger (mais il porte des sources lourdes : ATS multi-studios, cheerio) ;
+  (b) une 3ᵉ cadence dédiée aux seuls flux instantanés.
+- **Décision** : **3ᵉ cadence « express » toutes les 5 min**, limitée aux **flux curés à 1 requête** (AFJV,
+  Games-Career, GameJobs.co — RSS/Atom, sans quota), **sans purge** (réservée au léger/complet). Verrou `flock`
+  **par mode** (les 3 cadences ne se bloquent pas).
+- **Raison** : latence ≤ 5 min pour les sources niche FR, à coût quasi nul ; on ne peut pas faire « instantané »
+  (on dépend du RSS de la source, interrogé périodiquement). La collecte tourne via `tsx`, indépendante du build.
+- **Conséquence** : `scripts/cron-collect.sh [express|leger]` ; crontab `*/5 express`, `*/20 leger`, `3 */2 complet`.
+
+## ADR-0033 — Checkpoint mono-lead-dev : audit multi-agents + corrections
+
+- **Date** : 2026-06-02
+- **Contexte** : passage en **mono-lead-dev** (l'autre Claude, R&D uniquement, se retire). On fige un point de
+  contrôle après un audit multi-agents (44 agents, modèles adaptés Opus/Sonnet/Haiku, vérification adversariale).
+- **Décision** : appliquer les **7 findings medium** confirmés avant le tag — (1) Zod sur 4 scrapers HTML
+  (invariant) ; (2) hellowork PART_TIME → null ; (3) pays normalisé en libellé FR (`src/lib/pays.ts`,
+  indeed/hellowork/hitmarker) ; (4-5) facettes dédupliquées + respectant les filtres actifs ; (6) « principal » =
+  senior (pas lead) ; (7) motifs SI/ERP (sap/.net/java) **conditionnés au ROME** (ne tuent plus un rôle studio
+  légitime sur les filets larges). Aucun finding critique/high.
+- **Raison** : ne pas figer de bugs de données dans une base qui grossit. Le cœur métier (tri/enrichissement pur,
+  invariants RGPD/attribution/strict) a été confirmé **solide** par l'audit.
+- **Conséquence** : **151 tests** verts, backfill par re-collecte complète (pays + reclassement via upsert).
+  Couverture de tests volontairement centrée sur le pipeline pur (couche data-access non testée — choix assumé).
