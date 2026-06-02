@@ -3,20 +3,28 @@
 > À lire en premier au démarrage d'une session (avec `CLAUDE.md` + `DECISIONS.md`).
 > Mis à jour avant chaque `/clear`. Format court et opérationnel.
 
-**Dernière mise à jour** : 2026-06-02 (session : **DASHBOARD MVP livré** — ADR-0015)
-**Phase en cours** : **Phase 1 (MVP)**. **4 sources vivantes** : **France Travail** (API, ROME) +
-**AFJV** (RSS, jeu vidéo FR) + **Adzuna** (API, ~20 pays) + **Games-Career** (RSS, jeu vidéo EU/EN).
+**Dernière mise à jour** : 2026-06-02 (session : **TRI STRICT + connecteur ATS** — ADR-0016/0017)
+**Phase en cours** : **Phase 1 (MVP)**. **5 sources vivantes** : **France Travail** (API, ROME) +
+**AFJV** (RSS, jeu vidéo FR) + **Adzuna** (API, ~20 pays) + **Games-Career** (RSS, jeu vidéo EU/EN) +
+**ATS studios** (Greenhouse/Lever/Ashby, 13 studios curés, sans clé).
 **Pipeline pertinence + enrichissement LIVRÉ** (ADR-0011) ; **plancher de pertinence par source** (ADR-0012).
-**Dashboard LIVRÉ** (ADR-0015) : flux cœur + onglet connexes, filtres URL (pays/contrat/niveau/recherche),
-raccourcis juniors, attribution, route cron protégée. Base ≈ **1409 offres** (251 cœur / 1083 connexe / 75 rejet).
-Reste à faire : **connecteur générique ATS** (Greenhouse/Lever/Ashby — liste-amorce ~24 studios vérifiée,
-`SOURCES.md` Tier 1bis), puis scraping (Hitmarker, The Rookies, ArtStation). **À corriger aussi** : faux
-positifs de classification repérés au dashboard (cf. ▶️ action 0).
+**Dashboard LIVRÉ** (ADR-0015). **🆕 TRI EN COUCHES STRICT** (ADR-0016) : signaux structurés d'abord
+(ROME/catégorie Adzuna/famille AFJV/dept ATS), titre juge du cœur, **défaut strict = caché** ; fin du bruit
+(usineur, SAP, cadre de santé, profs, escape-game). **🆕 CONNECTEUR ATS** (ADR-0017) : +998 offres studios
+(Riot/Roblox/Epic/Scopely/Rockstar/Supercell…), dept→craft/cœur.
+**Base ≈ 2408 offres** (≈ **413 cœur / 1165 connexe / 830 rejet** — bougent à chaque collecte).
+Reste à faire : **automatiser la purge des offres périmées** dans le cron ; ajouter des studios/ATS ;
+**dédup inter-sources** ; puis scraping (Hitmarker, The Rookies, ArtStation).
+**Décision produit de cette session** : tri **STRICT** retenu par la proprio (cacher le hors-secteur net,
+garder cœur 3D/jeu/VFX/anim + périphérie). **Point ouvert produit** : l'onglet **connexes est volumineux**
+(corporate + ingénierie générique de studios) — à restreindre si la proprio le souhaite.
 
 **✅ État git (reprise propre)** : tout est **commité**, arbre **propre**. Derniers commits sur `master` :
-`12bed44` (recensement sources) · `fc6dc85` (checkpoint : pipeline + 4 connecteurs). Vérifié au vert avant
-checkpoint : `tsc` + `eslint` + **57 tests** + `npm run build`. Commit **local** (pas de remote configuré
-à ma connaissance — pousser si un dépôt distant existe). **Toutes les clés API sont présentes et fonctionnent.**
+`ff03a9d` (connecteur ATS) · `388231e` (tri strict en couches) · `48a88f5` (dashboard MVP). Vérifié au vert :
+`tsc` + `eslint` + **71 tests**. Commit **local** (pas de remote configuré — pousser si un dépôt distant existe).
+**Toutes les clés API sont présentes et fonctionnent.**
+⚠️ **Purge périmés faite à la main** cette session (DELETE par fenêtre `recupere_le` + studios retirés) —
+**à coder dans le pipeline** (sinon les offres mortes s'accumulent).
 **Recensement sources : FAIT** (cf. `SOURCES.md` — liste ATS vérifiée, boards VFX, EURES écarté).
 ⚠️ **2 Claude travaillent en parallèle sur ce repo** (coordination via ce HANDOFF + commits).
 **Direction produit actée** (2026-06-02, ADR-0009 + `PRODUIT.md`) : pertinence 3 classes (flux strict +
