@@ -15,8 +15,10 @@
   - **Fetch léger (cheerio)** : RemoteGameJobs, Work With Indies (RSS), PixelCareer (RSS), 80 Level (JSON embarqué), Hitmarker (sitemap+JSON-LD).
   - **Navigateur (Playwright)** : **AWN**, **GrackleHQ**, **Indeed** (recherche FR). Brique `src/lib/navigateur.ts` (`htmlRendu`/`htmlRenduLot`).
   - **Écartés/différés** (ADR-0029) : The Rookies (= fichier Dropbox), Cartoon Brew (DNS mort), ShowbizJobs (SPA à facettes, à reprendre). **LinkedIn = exclu** (RGPD/juridique).
-- **Temps réel** (ADR-0022) : **cron système 2 vitesses** — léger **20 min** (sources rapides) / complet **2 h**
-  (+ FT, Adzuna, Hitmarker, HelloWork, AWN, GrackleHQ, Indeed = navigateur). `scripts/cron-collect.sh` (flock + log `collect.log`). Démon `cron` actif.
+- **Temps réel** (ADR-0022) : **cron système 3 vitesses** — **express 5 min** (flux curés à 1 requête : AFJV,
+  Games-Career, GameJobs.co → latence ≤ 5 min, sans purge) / léger **20 min** (sources rapides) / complet **2 h**
+  (+ FT, Adzuna, Hitmarker, HelloWork, AWN, GrackleHQ, Indeed = navigateur). `scripts/cron-collect.sh [express|leger]`
+  (flock **par mode** + log `collect.log`). Démon `cron` actif. La collecte tourne via `tsx` (indépendante du build du site).
 - **Always-on** : le site tourne en **build de prod** sous **systemd `clara-hub`** (auto-restart + boot). Cf. `deploy/README.md`.
   → après toute modif de **code** : `npm run build && sudo systemctl restart clara-hub`. La **collecte** (données) ne nécessite pas de rebuild.
 - **Pipeline** : `normalize → enrichir → classer (tri STRICT, ADR-0016) → upsert (sans hors_scope)`. Plancher `connexe`
