@@ -10,6 +10,7 @@
  * classifieur strict filtre, le cœur 3D/anim/VFX est promu par le titre.
  */
 import { load } from "cheerio";
+import { z } from "zod";
 import type { Offre } from "@/domain/offre";
 import { htmlRendu } from "@/lib/navigateur";
 
@@ -18,14 +19,15 @@ export const SOURCE = "awn";
 const LISTING_URL = "https://jobs.awn.com/jobs";
 const BASE = "https://jobs.awn.com";
 
-/** Offre brute extraite d'une carte `.job-main-data` de la liste AWN. */
-export interface RawJobAWN {
-  url: string;
-  titre: string;
-  studio: string | null;
-  lieu: string | null;
-  sourceId: string;
-}
+/** Schéma de l'offre brute extraite d'une carte `.job-main-data` AWN (validation Zod de la donnée externe). */
+const RawJobAWNSchema = z.object({
+  url: z.string().min(1),
+  titre: z.string().min(1),
+  studio: z.string().nullable(),
+  lieu: z.string().nullable(),
+  sourceId: z.string().min(1),
+});
+export type RawJobAWN = z.infer<typeof RawJobAWNSchema>;
 
 function compact(s: string | undefined | null): string {
   return (s ?? "").replace(/\s+/g, " ").trim();
@@ -53,13 +55,14 @@ export function parseListe(html: string): RawJobAWN[] {
     const studio = compact(bloc.find(".job-company-row").first().text()) || null;
     const lieu = compact(bloc.find(".job-location").first().text()) || null;
 
-    out.push({
+    const valide = RawJobAWNSchema.safeParse({
       url: href.startsWith("http") ? href : BASE + href,
       titre,
       studio,
       lieu,
       sourceId,
     });
+    if (valide.success) out.push(valide.data);
   });
 
   return out;

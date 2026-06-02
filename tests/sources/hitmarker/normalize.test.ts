@@ -63,7 +63,7 @@ describe("Hitmarker — normalize", () => {
     expect(offre.titre).toBe("3D Artist");
     expect(offre.studio).toBe("Riot Games");
     expect(offre.ville).toBe("Los Angeles");
-    expect(offre.pays).toBe("USA");
+    expect(offre.pays).toBe("États-Unis"); // normalisé via nomPays (USA → libellé FR)
     expect(offre.contrat).toBe("CDI"); // FULL_TIME
     expect(offre.publieLe?.toISOString()).toBe("2026-05-29T23:17:25.000Z");
   });

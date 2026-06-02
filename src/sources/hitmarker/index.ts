@@ -18,6 +18,7 @@ import { XMLParser } from "fast-xml-parser";
 import { load } from "cheerio";
 import { z } from "zod";
 import type { Offre, Contrat } from "@/domain/offre";
+import { nomPays } from "@/lib/pays";
 
 export const SOURCE = "hitmarker";
 
@@ -164,7 +165,7 @@ export function normalize(raw: JobPosting, url: string): Offre {
 
   const lieu = premierLieu(raw.jobLocation);
   const ville = lieu?.address?.addressLocality ?? null;
-  const pays = lieu?.address?.addressCountry ?? null;
+  const pays = nomPays(lieu?.address?.addressCountry);
 
   const remote = (raw.jobLocationType ?? "").toUpperCase().includes("REMOTE");
 

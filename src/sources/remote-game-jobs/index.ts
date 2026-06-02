@@ -21,6 +21,7 @@
  * un fetch optionnel de la page de détail (description complète) pourra l'enrichir plus tard.
  */
 import { load } from "cheerio";
+import { z } from "zod";
 import type { Offre, Contrat } from "@/domain/offre";
 
 export const SOURCE = "remote-game-jobs";
@@ -28,15 +29,16 @@ export const SOURCE = "remote-game-jobs";
 const LISTING_URL = "https://remotegamejobs.com/";
 const USER_AGENT = "HubEmploi3D/0.1 (+job aggregator)";
 
-/** Offre brute extraite de la liste HTML RemoteGameJobs. */
-export interface RawJobRGJ {
-  url: string;
-  titre: string;
-  studio: string | null;
-  lieu: string | null;
-  contratBrut: string | null;
-  tags: string[];
-}
+/** Schéma de l'offre brute extraite de la liste HTML RemoteGameJobs (validation Zod de la donnée externe). */
+const RawJobRGJSchema = z.object({
+  url: z.string().min(1),
+  titre: z.string().min(1),
+  studio: z.string().nullable(),
+  lieu: z.string().nullable(),
+  contratBrut: z.string().nullable(),
+  tags: z.array(z.string()),
+});
+export type RawJobRGJ = z.infer<typeof RawJobRGJSchema>;
 
 /** Mappe le libellé de contrat du board vers notre enum `Contrat` (null si inconnu/ambigu). */
 function mapContrat(brut: string | null): Contrat | null {
@@ -92,7 +94,8 @@ export function parseListe(html: string): RawJobRGJ[] {
       .get()
       .filter(Boolean);
 
-    out.push({ url, titre, studio, lieu, contratBrut, tags });
+    const valide = RawJobRGJSchema.safeParse({ url, titre, studio, lieu, contratBrut, tags });
+    if (valide.success) out.push(valide.data);
   });
 
   return out;

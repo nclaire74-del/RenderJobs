@@ -8,6 +8,7 @@
  * **lot récent** affiché (≈30). Board **curé jeu vidéo** → plancher `connexe` ; cœur promu par le titre.
  */
 import { load } from "cheerio";
+import { z } from "zod";
 import type { Offre } from "@/domain/offre";
 import { htmlRendu } from "@/lib/navigateur";
 
@@ -16,13 +17,15 @@ export const SOURCE = "gracklehq";
 const LISTING_URL = "https://gracklehq.com/jobs";
 const BASE = "https://gracklehq.com";
 
-export interface RawJobGrackle {
-  url: string;
-  titre: string;
-  studio: string | null;
-  lieu: string | null;
-  sourceId: string;
-}
+/** Schéma de l'offre brute extraite d'une carte `.joblisting` GrackleHQ (validation Zod de la donnée externe). */
+const RawJobGrackleSchema = z.object({
+  url: z.string().min(1),
+  titre: z.string().min(1),
+  studio: z.string().nullable(),
+  lieu: z.string().nullable(),
+  sourceId: z.string().min(1),
+});
+export type RawJobGrackle = z.infer<typeof RawJobGrackleSchema>;
 
 function compact(s: string | undefined | null): string {
   return (s ?? "").replace(/\s+/g, " ").trim();
@@ -57,13 +60,14 @@ export function parseListe(html: string): RawJobGrackle[] {
     if (!titre) return;
     const { studio, lieu } = lireSocieteLieu(bloc.find("div").not(".bottomright").first().text());
 
-    out.push({
+    const valide = RawJobGrackleSchema.safeParse({
       url: href.startsWith("http") ? href : BASE + href,
       titre,
       studio,
       lieu,
       sourceId,
     });
+    if (valide.success) out.push(valide.data);
   });
 
   return out;

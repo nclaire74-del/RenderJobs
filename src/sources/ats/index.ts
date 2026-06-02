@@ -17,6 +17,7 @@
 import { z } from "zod";
 import type { Contrat, Offre } from "@/domain/offre";
 import { STUDIOS, type AtsPlateforme, type Studio } from "@/config/studios";
+import { nomPays } from "@/lib/pays";
 
 export const SOURCE = "ats";
 
@@ -82,20 +83,6 @@ function joindreDept(...parts: (string | null | undefined)[]): string | null {
   return nets.length ? [...new Set(nets)].join(" · ") : null;
 }
 
-/** Code pays ISO-2 ou libellé → nom lisible (FR). Best-effort, sinon renvoie l'entrée telle quelle. */
-const NOM_PAYS: Record<string, string> = {
-  fr: "France", france: "France",
-  gb: "Royaume-Uni", uk: "Royaume-Uni", "united kingdom": "Royaume-Uni",
-  us: "États-Unis", usa: "États-Unis", "united states": "États-Unis",
-  ca: "Canada", canada: "Canada", de: "Allemagne", germany: "Allemagne",
-  fi: "Finlande", finland: "Finlande", se: "Suède", sweden: "Suède",
-  nl: "Pays-Bas", netherlands: "Pays-Bas", es: "Espagne", spain: "Espagne",
-  sg: "Singapour", singapore: "Singapour", ie: "Irlande", ireland: "Irlande",
-};
-function nomPays(brut: string | null | undefined): string | null {
-  if (!brut) return null;
-  return NOM_PAYS[brut.trim().toLowerCase()] ?? brut.trim();
-}
 
 function dateOuNull(v: string | number | undefined | null): Date | null {
   if (v === undefined || v === null || v === "") return null;

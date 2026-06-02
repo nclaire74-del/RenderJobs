@@ -10,6 +10,7 @@
  * → **pas de plancher** : le classifieur strict filtre fortement. Choix assumé par la proprio.
  */
 import { load } from "cheerio";
+import { z } from "zod";
 import type { Offre } from "@/domain/offre";
 import { htmlRenduLot } from "@/lib/navigateur";
 
@@ -21,12 +22,14 @@ const REQUETES = ["jeu vidéo", "infographiste 3D", "game designer", "animateur 
 /** Nb max de cartes gardées par requête. */
 const MAX_PAR_REQUETE = 25;
 
-export interface RawJobIndeed {
-  jk: string;
-  titre: string;
-  studio: string | null;
-  lieu: string | null;
-}
+/** Schéma de l'offre brute extraite d'une carte Indeed (validation de la donnée externe, invariant Zod). */
+const RawJobIndeedSchema = z.object({
+  jk: z.string().min(1),
+  titre: z.string().min(1),
+  studio: z.string().nullable(),
+  lieu: z.string().nullable(),
+});
+export type RawJobIndeed = z.infer<typeof RawJobIndeedSchema>;
 
 function compact(s: string | undefined | null): string {
   return (s ?? "").replace(/\s+/g, " ").trim();
@@ -50,7 +53,8 @@ export function parseListe(html: string): RawJobIndeed[] {
 
     const studio = compact(bloc.find('[data-testid="company-name"]').first().text()) || null;
     const lieu = compact(bloc.find('[data-testid="text-location"]').first().text()) || null;
-    out.push({ jk, titre, studio, lieu });
+    const valide = RawJobIndeedSchema.safeParse({ jk, titre, studio, lieu });
+    if (valide.success) out.push(valide.data);
   });
 
   return out;
@@ -83,7 +87,7 @@ export function normalize(raw: RawJobIndeed): Offre {
     url: `${BASE}/viewjob?jk=${raw.jk}`, // URL canonique de l'offre (attribution)
     titre: raw.titre,
     studio: raw.studio,
-    pays: "FR",
+    pays: "France", // recherche fr.indeed.com → marché FR (libellé lisible, cohérent avec la facette)
     ville: raw.lieu,
     latitude: null,
     longitude: null,

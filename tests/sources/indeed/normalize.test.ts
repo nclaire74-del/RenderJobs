@@ -37,7 +37,7 @@ describe("Indeed — normalize", () => {
     expect(o.source).toBe(SOURCE);
     expect(o.sourceId).toBe("def456");
     expect(o.url).toBe("https://fr.indeed.com/viewjob?jk=def456");
-    expect(o.pays).toBe("FR");
+    expect(o.pays).toBe("France"); // libellé lisible (cohérent avec la facette pays)
     expect(o.langue).toBe("fr");
   });
 });

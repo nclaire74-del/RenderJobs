@@ -14,6 +14,7 @@
 import { load } from "cheerio";
 import { z } from "zod";
 import type { Offre, Contrat } from "@/domain/offre";
+import { nomPays } from "@/lib/pays";
 
 export const SOURCE = "hellowork";
 
@@ -110,7 +111,8 @@ function mapContrat(type: string | string[] | undefined): Contrat | null {
   if (t.includes("INTERN")) return "stage";
   if (t.includes("CONTRACTOR")) return "freelance";
   if (t.includes("TEMPORARY")) return "CDD";
-  if (t.includes("FULL_TIME") || t.includes("PART_TIME")) return "CDI";
+  if (t.includes("FULL_TIME")) return "CDI";
+  // PART_TIME : un temps partiel peut être CDI **ou** CDD → ambigu, on laisse null (pas de faux CDI).
   return null;
 }
 
@@ -173,7 +175,7 @@ export function normalize(raw: JobPosting, url: string): Offre {
     url,
     titre: raw.title,
     studio: nomStudio(raw.hiringOrganization),
-    pays: lieu?.address?.addressCountry ?? "FR",
+    pays: nomPays(lieu?.address?.addressCountry) ?? "France", // FR par défaut (board FR)
     ville: lieu?.address?.addressLocality ?? null,
     latitude: null,
     longitude: null,

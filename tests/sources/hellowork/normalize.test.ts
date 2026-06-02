@@ -34,7 +34,7 @@ describe("HelloWork — parseJobPosting + normalize", () => {
   it("normalise sourceId, lieu FR, contrat, langue et date", () => {
     expect(offre.source).toBe(SOURCE);
     expect(offre.sourceId).toBe("66075811");
-    expect(offre.pays).toBe("FR");
+    expect(offre.pays).toBe("France"); // normalisé via nomPays (libellé lisible, pas le code ISO)
     expect(offre.ville).toBe("Lyon");
     expect(offre.contrat).toBe("CDI");
     expect(offre.langue).toBe("fr");
