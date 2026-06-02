@@ -1,90 +1,59 @@
-# R&D — ArtStation Jobs (Tier 4 hostile) : faisabilité & recette
+# R&D — ArtStation Jobs : API publique JSON (cracké, sans auth)
 
-> Cible **explicite de la proprio**. Board art n°1 (jeu vidéo + ciné/VFX) → très haute densité « cœur ».
-> Document de **recherche** (read-only), pas de code. Sondé en réel le 2026-06-02. Posture : ADR-0007
-> (scraping agressif offres publiques, attribution obligatoire) — ArtStation = **Tier 4 (hostile)** de
-> `SOURCES.md` : Cloudflare + CSRF. **Verdict : faisable, API entièrement cartographiée, un seul verrou
-> (le token CSRF, qui exige un navigateur pour passer le challenge Cloudflare).**
+> Cible **explicite de la proprio**. Board art n°1 (jeu vidéo + ciné/VFX). Sondé en réel le 2026-06-02
+> (analyse réseau via MCP Chrome + confirmation serveur). **VERDICT : trivial.** Contrairement à la crainte
+> initiale (« Tier 4 hostile, Cloudflare, proxy requis »), l'**API JSON des offres est PUBLIQUE et ouverte** :
+> un simple `GET` **sans auth, sans CSRF, sans navigateur, sans cookie** suffit. Seules les **pages HTML**
+> sont protégées par le challenge Cloudflare — pas l'API. → ArtStation est en réalité une source **Tier 1**.
 
 ---
 
-## 1. Carte de la protection (résultats réels)
+## 1. La spec (clé en main, confirmée)
 
-| Cible | Résultat | Lecture |
-|---|---|---|
-| `GET /jobs` (page HTML) | **403 + `cf-mitigated: challenge`** | **Challenge JS Cloudflare** sur les pages HTML |
-| `GET /jobs.json` (shell SPA) | 200 (HTML shell Angular) | passe, mais ne contient pas les offres |
-| `GET /api/v2/jobs/search.json` | **500** (erreur Rails origine) | **l'endpoint existe, atteint l'origine** (pas bloqué par CF !) |
-| `POST /api/v2/jobs/search.json` (body JSON, sans token) | **412 « Invalid CSRF Token »** | shape acceptée ; **seul le token manque** |
+- **Endpoint liste/recherche** : `GET https://www.artstation.com/api/v2/jobs/public/jobs.json`
+- **Params (query string)** : `page`, `per_page`, `query` (texte libre). Ex. `?page=1&per_page=50&query=`
+- **Auth** : **AUCUNE**. Pas de CSRF, pas de cookie, pas de challenge sur ce chemin. Confirmé **côté serveur**
+  (fetch Python, UA navigateur banal) → **200** + JSON complet. Le segment **`/public/`** est la clé.
+- **Réponse** : `{ "total_count": 90, "data": [ {offre}, … ] }`. Le board entier ≈ **90 offres ouvertes**
+  (petit mais **100 % art/jeu/ciné → densité « cœur » très élevée**, exactement la niche).
+- **Endpoints compagnons** : `…/public/jobs/facets.json` (filtres/facettes) · `…/public/jobs/{hash_id}.json` (détail).
 
-**Constat majeur** : les endpoints **`/api/v2/*` ne sont PAS soumis au challenge JS** (ils atteignent
-l'origine Rails) — contrairement aux pages HTML. Le seul obstacle à l'API est le **token CSRF public**.
+## 2. Champs d'une offre (riches, directement exploitables pour le tri)
 
-## 2. L'API jobs (entièrement identifiée)
+`id`, **`hash_id`** (→ `sourceId` + URL `https://www.artstation.com/jobs/{hash_id}`), `title`, `description`,
+**`skills`** (signal spécialité/tri), **`level`** (`junior`/`middle`/`senior`… → **`experience`** sans regex !),
+**`job_type`** (`permanent`… → **`contrat`**), **`work_remotely`** (booléen → **`modeTravail`**), `offer_relocation`,
+**`company_name`** (→ `studio`), `company_url`, `apply_link` (souvent vide → repli sur l'URL ArtStation du poste),
+**`salary_range`** (objet structuré `{min_salary, max_salary, currency, period, currency_symbol}`),
+**`recruitment_localities`** (tableau de localités `{locality:{continent_name, country…}}` → **ville/pays**),
+`created_at`/`updated_at` (→ `publieLe`), `featured`, `image_thumb_url`, `recruitment_company`.
 
-- **Endpoint** : `POST https://www.artstation.com/api/v2/jobs/search.json`
-- **Body JSON** : `{"page":1,"per_page":10,"sorting":"recent", …filtres}` (la shape `page/per_page` est
-  acceptée — c'est le CSRF qui bloque, pas le body).
-- **Header requis** : **`Public-Csrf-Token: <token>`** (confirmé : le JS référence `PublicCsrfToken` /
-  `public-csrf-token` ; sans lui → **412**).
-- **Cookies** : `__cf_bm` (Cloudflare bot-management, ~30 min) ; un cookie/`Public-Csrf-Token` est
-  provisionné **après passage du challenge**.
-- **Routes front Angular vues dans le bundle** : `/jobs/all` (liste), `/jobs/studios`, `/jobs/saved`,
-  `/jobs/job_preferences`, `/jobs/job_resources`. Stack = Rails + SPA Angular (`data-beasties-container`).
+**Mapping `Offre`** quasi 1-pour-1 ; et **`level` + `work_remotely` + `job_type` + `skills`** sont des signaux
+**structurés** parfaits pour le tri (cf. `RD-TRI.md`) — pas besoin d'heuristiques de texte. Board curé art/jeu
+→ **plancher `connexe`**, `coeur` via titre/skills.
 
-## 3. Le verrou : obtenir le `Public-Csrf-Token`
+## 3. Recette connecteur (très simple)
 
-Le token **n'est pas ambiant** : un `GET` d'amorçage ne pose que `__cf_bm` (pas de cookie CSRF), et
-`/api/v2/csrf_protection/token.json` → 404 (`UnknownFormat`). Le token est provisionné **dans le contexte
-d'une page ayant passé le challenge JS Cloudflare**. ⇒ **Il faut un navigateur** (ou un solveur de
-challenge) pour : (1) passer le challenge CF, (2) récupérer `cf_clearance` + `Public-Csrf-Token`.
+1. Boucler `GET …/public/jobs.json?page=N&per_page=50` jusqu'à couvrir `total_count` (~2 pages pour 90 offres).
+2. `normalize()` : mapping direct des champs ci-dessus (`hash_id`→url, `company_name`→studio, `level`→experience,
+   `work_remotely`→modeTravail, `job_type`→contrat, `salary_range`→salaire, `recruitment_localities`→ville/pays).
+3. **Pas d'infra spéciale** : fetch standard (comme Adzuna/France Travail). Throttle léger + UA navigateur poli.
+   Attribution = lien vers la fiche ArtStation. Surveiller un éventuel durcissement CF (improbable sur `/public/`).
 
-## 3bis. Confirmation navigateur en réel (MCP Chrome, 2026-06-02)
+## 4. Chemin de R&D (pour mémoire — fausses pistes écartées)
 
-Capture menée via le navigateur (qui passe Cloudflare naturellement). **Résultats VÉRIFIÉS** :
-- ✅ Le navigateur **passe Cloudflare** sans friction → la page `/jobs` rend de vraies offres.
-- ✅ **Le token CSRF est dans `<meta name="public-csrf-token" content="…">`** (provisionné une fois CF
-  passé ; ex. capturé : `tX1Vu5bC…==`). C'est LÀ qu'il faut le lire (pas un cookie, pas `csrf-token`).
-- ✅ **Le token est accepté par l'API** : un `POST /api/v2/jobs/search.json` **sans** token → **412**
-  « Invalid CSRF Token » ; **avec** le token du meta → **500** (plus de 412 → le token passe, c'est le
-  **corps de requête** qui est en cause). La chaîne « meta token → API » est donc **validée**.
-- ⚠️ **Schéma du body non figé** : variantes testées (`{page,per_page}`, `{filters:[]}`, `{query}`,
-  GET avec query string…) → toutes **500**. L'app **ne déclenche pas** l'appel sur un simple chargement
-  /scroll (résultats **rendus côté serveur**) → impossible de capturer son payload exact sans **actionner
-  une vraie interaction UI** (clic sur un filtre, page suivante, soumission de recherche).
-- ℹ️ Voie alternative repérée : la liste est **SSR** ; un connecteur navigateur pourrait **parser le DOM
-  rendu** (cartes d'offres) plutôt que l'API — à confirmer sur la vue liste complète (la vue `?q=` testée
-  était trop pauvre en DOM).
+- Les **pages HTML** (`/jobs`) renvoient **403 + `cf-mitigated: challenge`** (challenge JS Cloudflare) → c'est
+  ce qui faisait croire à une cible hostile. Mais les endpoints **`/api/v2/*` atteignent l'origine** sans challenge.
+- Fausse piste initiale : `POST /api/v2/jobs/search.json` + header `Public-Csrf-Token` (lu dans
+  `<meta name="public-csrf-token">`). Le token est **accepté** (412 sans → 500 avec) mais l'endpoint **n'est pas
+  le bon** (500 quel que soit le body). La **capture réseau** (interception `fetch`/`XHR` + recherche réelle dans
+  l'UI) a révélé le **vrai** endpoint : `GET …/public/jobs.json` — **ouvert, sans CSRF**.
+- Leçon : pour ce type de SPA, **capturer la requête réelle au navigateur** tranche en quelques minutes ce que
+  le devinage d'API laisse en 500.
 
-**Reste exactement 1 inconnue** : le **schéma JSON du body** de `search.json`. Se capture en 1 geste en
-actionnant un filtre/pagination dans l'UI avec l'intercepteur `fetch`/`XHR` déjà prêt (cf. §5).
+## 5. Verdict
 
-## 4. Recette recommandée (pour le futur connecteur)
-
-1. **Établir une session via navigateur** : Playwright (Chromium) **ou** MCP Chrome (PC Windows, qui passe
-   le challenge naturellement) **ou** un solveur type FlareSolverr. Naviguer sur `https://www.artstation.com/jobs`,
-   laisser CF se résoudre, puis **capturer** depuis les requêtes réseau : le header **`Public-Csrf-Token`**
-   et les cookies (`cf_clearance`, `__cf_bm`).
-2. **Rejouer l'API JSON en direct** (léger, rapide) : `POST /api/v2/jobs/search.json` avec le token + cookies,
-   en paginant via `{page:N}`. Tant que les cookies sont valides (`__cf_bm` ~30 min), pas besoin du navigateur →
-   on ne paie le coût navigateur qu'au **renouvellement de session**.
-3. **À l'échelle** : **proxies résidentiels/rotatifs** probablement nécessaires (CF rate-limite par IP) →
-   cohérent avec « Tier 4, infra proxy requise » (`SOURCES.md`). Throttle + backoff sur 403/429.
-
-## 5. Prochaine sonde (1 étape, fait sauter le dernier inconnu)
-
-**Capturer un token réel + une réponse `search.json` via MCP Chrome** (le navigateur de la proprio passe CF
-sans effort) : naviguer sur `/jobs`, lire les requêtes réseau (`read_network_requests`) pour relever le header
-`Public-Csrf-Token` et le JSON de réponse → on confirmera alors **les champs exacts d'une offre** (titre,
-studio, discipline/catégorie, remote, localisation, date) et les **filtres** disponibles (discipline,
-type de contrat…). Ces champs seront d'excellents **signaux de tri** (board art → densité cœur très élevée).
-*Je peux faire cette capture si le navigateur est connecté côté PC Windows.*
-
-## 6. Verdict
-
-ArtStation est **faisable et la recette est validée en réel** : navigateur passe Cloudflare → token lu dans
-`<meta name="public-csrf-token">` → **token accepté** par `POST /api/v2/jobs/search.json` (412 sans → 500 avec).
-C'est un connecteur **« session navigateur → API JSON »** (ou, en alternative, **parse du DOM SSR**), à brancher
-quand l'infra proxy est prête. **Une seule inconnue résiduelle** : le **schéma exact du body** de `search.json`,
-à capturer en actionnant un filtre/pagination dans l'UI (intercepteur `fetch`/`XHR` déjà en place). Effort
-restant minime ; plus aucun point bloquant de principe.
+ArtStation = **résolu et facile**. `GET https://www.artstation.com/api/v2/jobs/public/jobs.json?page=N&per_page=50`
+→ JSON public, **sans auth**, ~90 offres ultra-pertinentes (art/jeu/ciné), champs structurés idéaux pour le tri.
+**Reclasser de Tier 4 (hostile) vers Tier 1** dans `SOURCES.md`. Connecteur au même patron qu'Adzuna/FT — **aucune
+infra navigateur/proxy nécessaire**. Plus aucune inconnue.

@@ -56,6 +56,14 @@ import {
   fetchOffres as fetch80Level,
   normalize as normalize80Level,
 } from "@/sources/80-level";
+import {
+  fetchOffres as fetchJobicy,
+  normalize as normalizeJobicy,
+} from "@/sources/jobicy";
+import {
+  fetchOffres as fetchRemotive,
+  normalize as normalizeRemotive,
+} from "@/sources/remotive";
 import type { Offre } from "@/domain/offre";
 import { SECTEUR_ACTIF } from "@/config/secteur-actif";
 import { traiter } from "./traiter";
@@ -305,6 +313,30 @@ export async function collect80Level(): Promise<CollectReport> {
   }
 }
 
+/** Lance la collecte Jobicy (board remote, industrie design/multimédia) et enregistre. */
+export async function collectJobicy(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchJobicy();
+    const offres: Offre[] = bruts.map(normalizeJobicy).map((o) => traiter(o));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "jobicy", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "jobicy", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Lance la collecte Remotive (board remote, catégorie design) et enregistre. */
+export async function collectRemotive(): Promise<CollectReport> {
+  try {
+    const bruts = await fetchRemotive();
+    const offres: Offre[] = bruts.map(normalizeRemotive).map((o) => traiter(o));
+    const { recus, ecrits } = await upsertOffres(offres);
+    return { source: "remotive", recuperees: recus, ecrites: ecrits };
+  } catch (e) {
+    return { source: "remotive", recuperees: 0, ecrites: 0, erreur: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Collecte toutes les sources actives. Chaque source est isolée (une qui échoue n'arrête pas les autres). */
 export async function collectToutes(): Promise<CollectReport[]> {
   return [
@@ -321,6 +353,8 @@ export async function collectToutes(): Promise<CollectReport[]> {
     await collectWorkWithIndies(),
     await collectPixelCareer(),
     await collect80Level(),
+    await collectJobicy(),
+    await collectRemotive(),
   ];
 }
 

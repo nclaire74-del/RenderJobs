@@ -544,3 +544,17 @@ C'est la couche de R&D documentée du projet. Le plus récent en bas. Versions v
   3127 lignes existantes (2983 avec signature). **Limite assumée** : la signature studio+titre peut
   **sur-fusionner** des postes réellement distincts d'un même studio au même intitulé (ex. plusieurs
   « Gameplay Developer » Wargaming sur des projets/lieux différents) → affinage possible avec le lieu.
+
+## ADR-0025 — +2 API remote (Jobicy design-multimédia, Remotive design) + constat « easy épuisé »
+- **Date** : 2026-06-02.
+- **Contexte** : nouveau tour de R&D sources. **Constat de lead dev** : les sources niche **faciles**
+  sont quasi **épuisées**. La famille VFX/animation restante (AWN, Cartoon Brew, ShowbizJobs) est
+  **dure** (Cloudflare/SPA/injoignable) ; 3DVF charge ses offres en JS (pas de liens exploitables).
+  Ne restent en facile que des **API remote généralistes** (rendement 3D décroissant — on a déjà
+  RemoteOK/Adzuna). Le vrai gisement suivant = les **gros sites durs** (Playwright + proxies).
+- **Décisions** (lead dev) : ajouter **2** API remote ciblées création (volume créatif, pas du tout-venant),
+  généralistes → **pas de plancher** (classifieur strict). `src/sources/jobicy/` (`industry=design-multimedia`,
+  + niveau→`experience`, salaire) ; `src/sources/remotive/` (`category=design`). Légères → `collectLeger`.
+- **Conséquence** : `tsc`+`eslint`+**123 tests** (+5). Réel : Jobicy 22, Remotive 18. **15 sources**.
+  Décliné : Himalayas/Arbeitnow (redondants avec l'existant remote), WTTJ (Algolia, clé front à extraire),
+  AWN/Cartoon Brew/ShowbizJobs (Cloudflare/SPA → relèvent du chantier « sites durs »).
