@@ -40,7 +40,9 @@ différenciants + enrichissement élargi + cron express 5 min + audit multi-agen
   Rôle `hub` / base `hub_emploi`. `DATABASE_URL` dans `.env.local`.
 - **Mono-lead-dev** depuis le checkpoint 2026-06-02 (ADR-0033) : un seul Claude pilote tout (code + R&D).
   Les fichiers `RD-*.md` (R&D de l'ancien binôme) sont **intégrés au dépôt** et désormais à consolider librement.
-- Commits **locaux** (pas de remote configuré).
+- **Remote GitHub** : `origin` = https://github.com/nclaire74-del/RenderJobs (PUBLIC, défaut `master`).
+  Auth via `gh` (compte `nclaire74-del`, HTTPS, credential helper configuré → `git push` direct). `bundle` =
+  ancien backup local (`/home/clara/clarafjv.bundle`), conservé. Identité git = `nclaire74-del` <…@users.noreply…>.
 
 ## 🔑 Secrets — `~/ClaraAFJV/.env.local` (chmod 600, gitignoré)
 
