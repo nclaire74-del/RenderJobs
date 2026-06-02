@@ -10,11 +10,20 @@ import {
   listerOffres,
   compterParVue,
   listerPays,
+  listerLogiciels,
+  listerSpecialites,
   VUES,
   type FiltreOffres,
   type Vue,
 } from "@/lib/offres-repo";
-import { CONTRATS, EXPERIENCES, type Contrat, type Experience } from "@/domain/offre";
+import {
+  CONTRATS,
+  EXPERIENCES,
+  MODES_TRAVAIL,
+  type Contrat,
+  type Experience,
+  type ModeTravail,
+} from "@/domain/offre";
 import { construireHref, premier, type ParamsBruts } from "@/lib/url";
 import { Onglets } from "@/components/onglets";
 import { BarreFiltres } from "@/components/barre-filtres";
@@ -36,6 +45,11 @@ function lireFiltre(params: ParamsBruts): FiltreOffres {
     ? (expBrute as Experience)
     : undefined;
 
+  const modeBrut = premier(params.mode);
+  const mode = MODES_TRAVAIL.includes(modeBrut as ModeTravail)
+    ? (modeBrut as ModeTravail)
+    : undefined;
+
   const pageBrute = Number.parseInt(premier(params.page) ?? "1", 10);
   const page = Number.isFinite(pageBrute) && pageBrute > 0 ? pageBrute : 1;
 
@@ -44,6 +58,10 @@ function lireFiltre(params: ParamsBruts): FiltreOffres {
     pays: premier(params.pays),
     contrat,
     experience,
+    // Logiciel/spécialité : valeurs libres validées par la facette (un inconnu → 0 résultat).
+    logiciel: premier(params.logiciel),
+    specialite: premier(params.specialite),
+    mode,
     q: premier(params.q),
     page,
   };
@@ -55,11 +73,14 @@ export default async function Dashboard({
   const filtre = lireFiltre(await searchParams);
 
   // Requêtes parallèles (Promise.all — cf. docs Next « parallel data fetching »).
-  const [{ offres, page, aPageSuivante }, comptes, pays] = await Promise.all([
-    listerOffres(filtre),
-    compterParVue(filtre),
-    listerPays(filtre.vue),
-  ]);
+  const [{ offres, page, aPageSuivante }, comptes, pays, logiciels, specialites] =
+    await Promise.all([
+      listerOffres(filtre),
+      compterParVue(filtre),
+      listerPays(filtre.vue),
+      listerLogiciels(filtre.vue),
+      listerSpecialites(filtre.vue),
+    ]);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
@@ -75,7 +96,12 @@ export default async function Dashboard({
       <p className="mt-3 text-sm text-zinc-500">{t.vueAide[filtre.vue]}</p>
 
       <div className="mt-4">
-        <BarreFiltres filtre={filtre} pays={pays} />
+        <BarreFiltres
+          filtre={filtre}
+          pays={pays}
+          logiciels={logiciels}
+          specialites={specialites}
+        />
       </div>
 
       {offres.length === 0 ? (

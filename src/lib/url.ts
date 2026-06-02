@@ -30,6 +30,9 @@ export function construireHref(
   if (f.pays) params.set("pays", f.pays);
   if (f.contrat) params.set("contrat", f.contrat);
   if (f.experience) params.set("experience", f.experience);
+  if (f.logiciel) params.set("logiciel", f.logiciel);
+  if (f.specialite) params.set("specialite", f.specialite);
+  if (f.mode) params.set("mode", f.mode);
   if (f.q) params.set("q", f.q);
   if (f.page && f.page > 1) params.set("page", String(f.page));
 

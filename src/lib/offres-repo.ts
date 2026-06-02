@@ -11,11 +11,27 @@
  *   (UC-1 : le scan rapide trié par fraîcheur) ;
  * - filtres combinables, état porté par l'URL (UC-2 : partageable).
  */
-import { and, asc, desc, eq, ilike, or, sql, count, getTableColumns } from "drizzle-orm";
+import {
+  and,
+  arrayContains,
+  asc,
+  desc,
+  eq,
+  ilike,
+  or,
+  sql,
+  count,
+  getTableColumns,
+} from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import { offres, type OffreRow } from "@/db/schema";
-import type { Contrat, Experience, Pertinence } from "@/domain/offre";
+import type {
+  Contrat,
+  Experience,
+  ModeTravail,
+  Pertinence,
+} from "@/domain/offre";
 
 /**
  * **Clé de regroupement pour la déduplication** : la signature `cle_dedup` si présente, sinon
@@ -50,6 +66,12 @@ export interface FiltreOffres {
   pays?: string;
   contrat?: Contrat;
   experience?: Experience;
+  /** Filtre différenciant : un logiciel déduit (label canon, ex. "Blender"). */
+  logiciel?: string;
+  /** Filtre différenciant : une spécialité déduite (code canon, ex. "vfx"). */
+  specialite?: string;
+  /** Mode de travail déduit (remote / hybride / onsite). */
+  mode?: ModeTravail;
   /** Recherche plein-texte simple (titre / studio / description). */
   q?: string;
   /** Page 1-indexée. */
@@ -66,6 +88,10 @@ function conditionsCommunes(f: FiltreOffres): SQL[] {
   if (f.pays) conds.push(eq(offres.pays, f.pays));
   if (f.contrat) conds.push(eq(offres.contrat, f.contrat));
   if (f.experience) conds.push(eq(offres.experience, f.experience));
+  if (f.mode) conds.push(eq(offres.modeTravail, f.mode));
+  // Colonnes text[] : containment `@>` (l'offre porte ce logiciel / cette spécialité).
+  if (f.logiciel) conds.push(arrayContains(offres.logiciels, [f.logiciel]));
+  if (f.specialite) conds.push(arrayContains(offres.specialites, [f.specialite]));
 
   const terme = f.q?.trim();
   if (terme) {
@@ -186,4 +212,44 @@ export async function listerPays(vue: Vue): Promise<FacettePays[]> {
   return lignes
     .filter((l): l is { pays: string; n: number } => l.pays !== null && l.pays !== "")
     .map((l) => ({ pays: l.pays, n: l.n }));
+}
+
+/** Une option de facette « tableau » (logiciel / spécialité) : valeur canon + nombre d'offres. */
+export interface FacetteTableau {
+  valeur: string;
+  n: number;
+}
+
+/**
+ * Facette d'une colonne `text[]` (logiciels / specialites) pour une vue : déplie le tableau
+ * (`unnest`), compte par valeur, trie par fréquence. Sert à peupler les listes déroulantes
+ * différenciantes (on n'y propose que des valeurs réellement présentes).
+ */
+async function facetteTableau(
+  colonne: typeof offres.logiciels | typeof offres.specialites,
+  vue: Vue,
+): Promise<FacetteTableau[]> {
+  const deplie = db
+    .select({ valeur: sql<string>`unnest(${colonne})`.as("valeur") })
+    .from(offres)
+    .where(eq(offres.pertinence, vue))
+    .as("deplie");
+
+  const lignes = await db
+    .select({ valeur: deplie.valeur, n: count() })
+    .from(deplie)
+    .groupBy(deplie.valeur)
+    .orderBy(desc(count()), asc(deplie.valeur));
+
+  return lignes.map((l) => ({ valeur: l.valeur, n: l.n }));
+}
+
+/** Logiciels présents dans une vue, du plus fréquent au moins fréquent (filtre différenciant). */
+export function listerLogiciels(vue: Vue): Promise<FacetteTableau[]> {
+  return facetteTableau(offres.logiciels, vue);
+}
+
+/** Spécialités présentes dans une vue, du plus fréquent au moins fréquent (filtre différenciant). */
+export function listerSpecialites(vue: Vue): Promise<FacetteTableau[]> {
+  return facetteTableau(offres.specialites, vue);
 }

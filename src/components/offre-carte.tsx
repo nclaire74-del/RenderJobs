@@ -17,6 +17,7 @@ import {
   libelleExperience,
   libelleMode,
   libelleSource,
+  libelleSpecialite,
   t,
 } from "@/lib/i18n";
 
@@ -89,7 +90,7 @@ export function OffreCarte({ offre }: { offre: OffreRow }) {
           </Etiquette>
         ))}
         {offre.specialites.map((s) => (
-          <Etiquette key={`spe-${s}`}>{s}</Etiquette>
+          <Etiquette key={`spe-${s}`}>{libelleSpecialite(s)}</Etiquette>
         ))}
         {!aEtiquettes ? (
           <span className="text-xs italic text-zinc-600">

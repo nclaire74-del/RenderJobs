@@ -11,12 +11,18 @@
  * Composant serveur pur.
  */
 import Link from "next/link";
-import type { FiltreOffres, FacettePays } from "@/lib/offres-repo";
-import { CONTRATS, EXPERIENCES } from "@/domain/offre";
+import type {
+  FiltreOffres,
+  FacettePays,
+  FacetteTableau,
+} from "@/lib/offres-repo";
+import { CONTRATS, EXPERIENCES, MODES_TRAVAIL } from "@/domain/offre";
 import { construireHref } from "@/lib/url";
 import {
   libelleContrat,
   libelleExperience,
+  libelleMode,
+  libelleSpecialite,
   RACCOURCIS_JUNIOR,
   t,
 } from "@/lib/i18n";
@@ -27,12 +33,22 @@ const champ =
 export function BarreFiltres({
   filtre,
   pays,
+  logiciels,
+  specialites,
 }: {
   filtre: FiltreOffres;
   pays: FacettePays[];
+  logiciels: FacetteTableau[];
+  specialites: FacetteTableau[];
 }) {
   const aFiltreActif = Boolean(
-    filtre.pays || filtre.contrat || filtre.experience || filtre.q,
+    filtre.pays ||
+      filtre.contrat ||
+      filtre.experience ||
+      filtre.logiciel ||
+      filtre.specialite ||
+      filtre.mode ||
+      filtre.q,
   );
 
   return (
@@ -88,6 +104,49 @@ export function BarreFiltres({
           {EXPERIENCES.map((e) => (
             <option key={e} value={e}>
               {libelleExperience(e)}
+            </option>
+          ))}
+        </select>
+
+        {/* Filtres différenciants du produit : logiciel + spécialité (déduits). */}
+        <select
+          name="logiciel"
+          defaultValue={filtre.logiciel ?? ""}
+          className={champ}
+          aria-label={t.filtres.logiciel}
+        >
+          <option value="">{t.filtres.tousLogiciels}</option>
+          {logiciels.map((l) => (
+            <option key={l.valeur} value={l.valeur}>
+              {l.valeur} ({l.n})
+            </option>
+          ))}
+        </select>
+
+        <select
+          name="specialite"
+          defaultValue={filtre.specialite ?? ""}
+          className={champ}
+          aria-label={t.filtres.specialite}
+        >
+          <option value="">{t.filtres.toutesSpecialites}</option>
+          {specialites.map((s) => (
+            <option key={s.valeur} value={s.valeur}>
+              {libelleSpecialite(s.valeur)} ({s.n})
+            </option>
+          ))}
+        </select>
+
+        <select
+          name="mode"
+          defaultValue={filtre.mode ?? ""}
+          className={champ}
+          aria-label={t.filtres.mode}
+        >
+          <option value="">{t.filtres.tousModes}</option>
+          {MODES_TRAVAIL.map((m) => (
+            <option key={m} value={m}>
+              {libelleMode(m)}
             </option>
           ))}
         </select>

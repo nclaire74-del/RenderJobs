@@ -33,6 +33,12 @@ export const t = {
     tousContrats: "Tous contrats",
     experience: "Niveau",
     tousNiveaux: "Tous niveaux",
+    logiciel: "Logiciel",
+    tousLogiciels: "Tous logiciels",
+    specialite: "Spécialité",
+    toutesSpecialites: "Toutes spécialités",
+    mode: "Mode de travail",
+    tousModes: "Tous modes",
     recherche: "Rechercher (poste, studio…)",
     valider: "Appliquer",
     reinitialiser: "Réinitialiser",
@@ -77,6 +83,31 @@ const EXPERIENCES_FR: Record<Experience, string> = {
   lead: "Lead / direction",
 };
 export const libelleExperience = (e: Experience): string => EXPERIENCES_FR[e];
+
+/**
+ * Libellés FR des **spécialités** (codes canon déduits par `enrichir.ts`).
+ * Un code inconnu retombe sur lui-même (jamais d'écran vide).
+ */
+const SPECIALITES_FR: Record<string, string> = {
+  character: "Personnage",
+  environment: "Environnement",
+  rigging: "Rigging",
+  modeling: "Modélisation",
+  texturing: "Texturing / look dev",
+  lighting: "Éclairage",
+  compositing: "Compositing",
+  vfx: "VFX / effets visuels",
+  animation: "Animation",
+  "motion-design": "Motion design",
+  "concept-art": "Concept art",
+  "game-design": "Game design",
+  storyboard: "Storyboard",
+  "matte-painting": "Matte painting",
+  previz: "Prévisualisation",
+  rotoscopie: "Rotoscopie",
+  archviz: "Archviz",
+};
+export const libelleSpecialite = (s: string): string => SPECIALITES_FR[s] ?? s;
 
 /** Libellés du mode de travail. */
 const MODES_FR: Record<ModeTravail, string> = {
